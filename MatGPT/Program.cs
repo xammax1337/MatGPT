@@ -1,9 +1,15 @@
+using MatGPT.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using OpenAI_API;
 using OpenAI_API.Models;
 using System.Formats.Asn1;
 
 var builder = WebApplication.CreateBuilder(args);
+
+string connectionString = builder.Configuration.GetConnectionString("ApplicationContext");
+builder.Services.AddDbContext<ApplicationContext>(opt => opt.UseSqlServer(connectionString));
 
 DotNetEnv.Env.Load();
 
@@ -33,19 +39,29 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/Testing", async (string query, OpenAIAPI api) =>
+app.MapGet("/GenerateRecipe", async (string query, string language,  OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
     chat.RequestParameters.Temperature = 0;
 
-    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you.");
+    chat.AppendSystemMessage($"Language: {language}. Query: {query}");
+
+    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available.");
+
+
+    chat.AppendSystemMessage("State estimated cooking time. Answer in chosen language.");
+
+
 
     chat.AppendUserInput(query);
 
     var answer = await chat.GetResponseFromChatbotAsync();
 
-    return answer;
+    return new JsonResult(answer);
 });
+
+
+
 
 app.Run();
