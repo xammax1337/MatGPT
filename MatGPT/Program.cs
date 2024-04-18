@@ -48,4 +48,5 @@ app.MapGet("/Testing", async (string query, OpenAIAPI api) =>
     return answer;
 });
 
+
 app.Run();
