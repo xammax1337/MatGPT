@@ -6,10 +6,10 @@
         public string FirstName { get; set; }
         public string LastName { get; set; }
 
-        public ICollection<Recipe> Recipes { get; set; }
-        public ICollection<FoodItem> FoodItems { get; set; }
-        public ICollection<FoodPreference> FoodPreferences { get; set;}
-        public ICollection<KitchenSupply> KitchenSupplies { get; set;}
-        public Credential Credential { get; set; }
+        public virtual ICollection<Recipe> Recipes { get; set; }
+        public virtual ICollection<FoodItem> FoodItems { get; set; }
+        public virtual ICollection<FoodPreference> FoodPreferences { get; set;}
+        public virtual ICollection<KitchenSupply> KitchenSupplies { get; set;}
+        public virtual Credential Credential { get; set; }
     }
 }

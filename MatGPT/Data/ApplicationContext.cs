@@ -10,7 +10,8 @@ namespace MatGPT.Data
         public DbSet<FoodItem> FoodItems { get; set; }
         public DbSet<Recipe> Recipes { get; set; }
         public DbSet<FoodPreference> FoodPreferences { get; set; }
-        public DbSet <KitchenSupply> KitchenSupply { get; set;}
+        public DbSet <KitchenSupply> KitchenSupplies { get; set;}
+        public DbSet<PantryFoodItem> PantryFoodItems { get; set; }
 
         public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options) { }
     }
