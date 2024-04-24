@@ -18,16 +18,16 @@
 1. **Clone the Repository:**
   * https://github.com/xammax1337/MatGPT/
 2. **Database Setup:**
-	* Create a new SQL-database
-	* Copy your database connectionstring and change to yours in appsettings.json "FoodDB2".
-	* Update-Database in Package Manager Console.
+  * Create a new SQL-database
+  * Copy your database connectionstring and change to yours in appsettings.json "FoodDB2".
+  * Update-Database in Package Manager Console.
 3. **Protect API Key**
   * Create .env file in the project.
   * Insert this in the .env file: OPENAI_API_KEY=(Your key here)
 4. **Run the API:**
-	* Launch the API program to start the server.
+  * Launch the API program to start the server.
 5. **Run Swagger:** 
-	* Use Swagger to interact with the API.
+  * Use Swagger to interact with the API.
 ## Usage
 ## Contributors
 Students:
