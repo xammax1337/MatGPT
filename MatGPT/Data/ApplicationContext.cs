@@ -13,5 +13,22 @@ namespace MatGPT.Data
         public DbSet <KitchenSupply> KitchenSupply { get; set;}
 
         public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options) { }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<PantryFoodItem>()
+                .HasOne(r => r.FoodItem)
+                .WithMany(b=>b.PantryFoodItems) 
+                .HasForeignKey(f => f.FoodItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<PantryFoodItem>()
+               .HasOne(r => r.Pantry)
+               .WithMany(p=>p.PantryFoodItems)
+               .HasForeignKey(f => f.PantryId)
+               .OnDelete(DeleteBehavior.Restrict);
+        }
     }
+
 }
