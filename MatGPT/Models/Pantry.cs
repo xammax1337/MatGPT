@@ -3,18 +3,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MatGPT.Models
 {
-    public class Recipe
+    public class Pantry
     {
         [Key]
-        public int RecipeId { get; set; }
-        public string RecipeName { get; set; }
-        public string RecipeDescription { get; set; }
-        public int? CookingTime { get; set; }
+        public int PantryId { get; set; }
+        public string PantryName { get; set; }
         [ForeignKey("User")]
         public int UserId { get; set; }
-
         public User User { get; set; }
 
-
+        public virtual ICollection<PantryFoodItem> PantryFoodItems { get; set; }
     }
 }

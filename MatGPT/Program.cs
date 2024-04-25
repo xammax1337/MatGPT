@@ -99,13 +99,13 @@ app.MapGet("/GenerateRecipeByFoodPreference", async (string query, string langua
 
     chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
 
-
     var kitchenSupplies = await dbContext.KitchenSupply
     .Where(ks => ks.UserId == userId)
     .Select(ks => ks.KitchenSupplyName)
     .ToListAsync();
 
     string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
+
 
     var pantryFoodItems = await dbContext.FoodItems
     .Where(fi => fi.UserId == userId)

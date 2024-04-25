@@ -4,7 +4,7 @@
 
 namespace MatGPT.Migrations
 {
-    public partial class Init : Migration
+    public partial class Init6 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -51,7 +51,7 @@ namespace MatGPT.Migrations
                     FoodItemId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     FoodItemName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Amount = table.Column<double>(type: "float", nullable: false),
+                    Amount = table.Column<double>(type: "float", nullable: true),
                     UserId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -106,6 +106,26 @@ namespace MatGPT.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Pantry",
+                columns: table => new
+                {
+                    PantryId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PantryName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Pantry", x => x.PantryId);
+                    table.ForeignKey(
+                        name: "FK_Pantry_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Recipes",
                 columns: table => new
                 {
@@ -113,7 +133,7 @@ namespace MatGPT.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     RecipeName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     RecipeDescription = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CookingTime = table.Column<int>(type: "int", nullable: false),
+                    CookingTime = table.Column<int>(type: "int", nullable: true),
                     UserId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -125,6 +145,32 @@ namespace MatGPT.Migrations
                         principalTable: "Users",
                         principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PantryFoodItem",
+                columns: table => new
+                {
+                    PantryFoodItemId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FoodItemId = table.Column<int>(type: "int", nullable: false),
+                    PantryId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PantryFoodItem", x => x.PantryFoodItemId);
+                    table.ForeignKey(
+                        name: "FK_PantryFoodItem_FoodItems_FoodItemId",
+                        column: x => x.FoodItemId,
+                        principalTable: "FoodItems",
+                        principalColumn: "FoodItemId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_PantryFoodItem_Pantry_PantryId",
+                        column: x => x.PantryId,
+                        principalTable: "Pantry",
+                        principalColumn: "PantryId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
@@ -149,6 +195,21 @@ namespace MatGPT.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Pantry_UserId",
+                table: "Pantry",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PantryFoodItem_FoodItemId",
+                table: "PantryFoodItem",
+                column: "FoodItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PantryFoodItem_PantryId",
+                table: "PantryFoodItem",
+                column: "PantryId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Recipes_UserId",
                 table: "Recipes",
                 column: "UserId");
@@ -160,16 +221,22 @@ namespace MatGPT.Migrations
                 name: "Credentials");
 
             migrationBuilder.DropTable(
-                name: "FoodItems");
-
-            migrationBuilder.DropTable(
                 name: "FoodPreferences");
 
             migrationBuilder.DropTable(
                 name: "KitchenSupply");
 
             migrationBuilder.DropTable(
+                name: "PantryFoodItem");
+
+            migrationBuilder.DropTable(
                 name: "Recipes");
+
+            migrationBuilder.DropTable(
+                name: "FoodItems");
+
+            migrationBuilder.DropTable(
+                name: "Pantry");
 
             migrationBuilder.DropTable(
                 name: "Users");
