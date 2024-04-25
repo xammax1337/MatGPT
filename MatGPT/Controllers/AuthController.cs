@@ -84,7 +84,10 @@ namespace MatGPT.Controllers
             if (!Convert.ToBase64String(hash).Equals(user.Credential.PasswordHash))
                 return Unauthorized("Wrong password!");
 
-            return Ok($"Login successful! Welcome back {user.FirstName}!");
+            // When logged in saves UserId in session so it can be used in other endpoints
+            HttpContext.Session.SetString("UserId", user.UserId.ToString());
+
+            return Ok(new { message = $"Login successful! Welcome back {user.FirstName}!" });
         }
 
         // Generate the salt for password
@@ -111,8 +114,18 @@ namespace MatGPT.Controllers
 
             return hashedBytes;
         }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            // Clear user's session
+            HttpContext.Session.Clear();
+
+            return Ok("Logout successful");
+        }
     }
 
+    // Models for login and register, move into model folder maybe
     public class RegisterRequest
     {
         [Required]
