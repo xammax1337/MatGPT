@@ -21,20 +21,10 @@ namespace MatGPT.Controllers
             _api = api;
         }
 
+        // Test endpoint 
         [HttpPost("GenerateRecipe")]
         public async Task<IActionResult> GenerateRecipe(string query)
         {
-
-            //var chat = _api.Chat.CreateConversation();
-            //chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
-            //chat.RequestParameters.Temperature = 0;
-
-            //chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
-
-            //chat.AppendUserInput(query);
-
-            //var answer = await chat.GetResponseFromChatbotAsync();
-
             // Retrieve user's ID from session
             string userId = HttpContext.Session.GetString("UserId");
 

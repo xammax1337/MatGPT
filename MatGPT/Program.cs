@@ -50,5 +50,91 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapGet("/GenerateRecipe", async (string query, string language, int userId, ApplicationContext dbContext, OpenAIAPI api) =>
+{
+    var chat = api.Chat.CreateConversation();
+    chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
+    chat.RequestParameters.Temperature = 0;
+
+    chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
+
+    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
+
+    //Filter: Will ensure that generated recipe will use these available tools
+    var kitchenSupplies = await dbContext.KitchenSupply
+    .Where(ks => ks.UserId == userId)
+    .Select(ks => ks.KitchenSupplyName)
+    .ToListAsync();
+
+    string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
+
+    //Filter: Will ensure that generated recipe will use these available ingredients
+    var pantryFoodItems = await dbContext.FoodItems
+    .Where(fi => fi.UserId == userId)
+    .Select(fi => fi.FoodItemName)
+    .ToListAsync();
+
+    string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryFoodItems)}";
+
+    chat.AppendUserInput(kSUserInput);
+
+    chat.AppendUserInput(pFIUserInput);
+
+    chat.AppendUserInput(query);
+
+
+    var answer = await chat.GetResponseFromChatbotAsync();
+
+    return new JsonResult(answer);
+});
+
+
+app.MapGet("/GenerateRecipeByFoodPreference", async (string query, string language, int userId, ApplicationContext dbContext, OpenAIAPI api) =>
+{
+    var chat = api.Chat.CreateConversation();
+    chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
+    chat.RequestParameters.Temperature = 0;
+
+    chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
+
+    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
+
+
+    var kitchenSupplies = await dbContext.KitchenSupply
+    .Where(ks => ks.UserId == userId)
+    .Select(ks => ks.KitchenSupplyName)
+    .ToListAsync();
+
+    string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
+
+    var pantryFoodItems = await dbContext.FoodItems
+    .Where(fi => fi.UserId == userId)
+    .Select(fi => fi.FoodItemName)
+    .ToListAsync();
+
+    string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryFoodItems)}";
+
+    //Filter: Will ensure that generated recipe adjusts according to diets/allergies
+    var foodPreference = await dbContext.FoodPreferences
+    .Where(fp => fp.UserId == userId)
+    .Select(fp => fp.FoodPreferenceName)
+    .ToListAsync();
+
+    string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
+
+
+    chat.AppendUserInput(kSUserInput);
+
+    chat.AppendUserInput(pFIUserInput);
+
+    chat.AppendUserInput(fPUserInput);
+
+    chat.AppendUserInput(query);
+
+
+    var answer = await chat.GetResponseFromChatbotAsync();
+
+    return new JsonResult(answer);
+});
 
 app.Run();
