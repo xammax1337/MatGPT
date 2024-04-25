@@ -59,6 +59,9 @@ namespace MatGPT.Controllers
             return new JsonResult(new { RecipeDescription = answer });
         }
 
+        // This endpoint NEEDS to be called after the other ones.
+        // The other endpoints will auto save recipes in "temporary storage" and then this decides if the recipe should be deleted
+        // or permanently saved to a user.
         [HttpPost("SaveRecipe")]
         public async Task<IActionResult> SaveRecipe(string recipeName, bool saveRecipe)
         {

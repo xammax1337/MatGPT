@@ -16,10 +16,9 @@ DotNetEnv.Env.Load();
 
 // Add services to the container.
 
-
-
 builder.Services.AddControllers();
 
+// Added session service so we can use Session to check user authorization
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(20); // Set session expiration time

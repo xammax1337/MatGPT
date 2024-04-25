@@ -125,6 +125,7 @@ namespace MatGPT.Controllers
         }
     }
 
+    // Models for login and register, move into model folder maybe
     public class RegisterRequest
     {
         [Required]
