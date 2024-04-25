@@ -1,11 +1,17 @@
 using MatGPT.Data;
 using MatGPT.Models;
+using MatGPT.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Newtonsoft.Json;
 using OpenAI_API;
+using OpenAI_API.Chat;
+using OpenAI_API.Images;
 using OpenAI_API.Models;
+using Sprache;
 using System.Formats.Asn1;
+using static System.Net.WebRequestMethods;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,15 +46,15 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/GenerateRecipe", async (string query, string language, int userId, ApplicationContext dbContext,  OpenAIAPI api) =>
+app.MapGet("/GenerateRecipe", async (string query, int userId, ApplicationContext dbContext,  OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
     chat.RequestParameters.Temperature = 0;
 
-    chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
+    //chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
 
-    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
+    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cooking time - without extra sentences. Answer in English. Return Json in these fields: Title, ingredients, instructions and cooking time.");
 
     //Filter: Will ensure that generated recipe will use these available tools
     var kitchenSupplies = await dbContext.KitchenSupply
@@ -75,19 +81,35 @@ app.MapGet("/GenerateRecipe", async (string query, string language, int userId, 
 
     var answer = await chat.GetResponseFromChatbotAsync();
 
-    return new JsonResult(answer);
+   
+
+    string jsonResponse = answer;
+
+    var responseObject = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
+    Console.WriteLine(responseObject.ToString());
+    var recipeJson = responseObject.ToString();
+
+    // Deserialize recipe information into RecipeViewModel
+    var recipe = JsonConvert.DeserializeObject<RecipeViewModel>(recipeJson);
+
+    await GenerateImageByRecipeTitle(recipe.Title, api);
+
+    return Results.Ok(recipe);
 });
 
 
-app.MapGet("/GenerateRecipeByFoodPreference", async (string query, string language, int userId, ApplicationContext dbContext, OpenAIAPI api) =>
+
+
+app.MapGet("/GenerateRecipeByFoodPreference", async (string query, int userId, ApplicationContext dbContext, OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
     chat.RequestParameters.Temperature = 0;
+    chat.RequestParameters.ResponseFormat = ChatRequest.ResponseFormats.JsonObject;
 
-    chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
+    //chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
 
-    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
+    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in English.");
 
 
     var kitchenSupplies = await dbContext.KitchenSupply
@@ -126,6 +148,13 @@ app.MapGet("/GenerateRecipeByFoodPreference", async (string query, string langua
 
     return new JsonResult(answer);
 });
+
+ static async Task GenerateImageByRecipeTitle(string recipeTitle, OpenAIAPI api)
+{
+    var result = await api.ImageGenerations.CreateImageAsync(new ImageGenerationRequest($"Food plating image of: {recipeTitle}. Image should be appealing, like an advertisement image.", OpenAI_API.Models.Model.DALLE3));
+
+    await Console.Out.WriteLineAsync(result.Data[0].Url);
+};
 
 
 app.Run();
