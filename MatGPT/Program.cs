@@ -1,11 +1,17 @@
 using MatGPT.Data;
 using MatGPT.Models;
+using MatGPT.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Newtonsoft.Json;
 using OpenAI_API;
+using OpenAI_API.Chat;
+using OpenAI_API.Images;
 using OpenAI_API.Models;
+using Sprache;
 using System.Formats.Asn1;
+using static System.Net.WebRequestMethods;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,15 +56,14 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/GenerateRecipe", async (string query, string language, int userId, ApplicationContext dbContext, OpenAIAPI api) =>
+//User has to input ingredients and if they want to limit their cooking time
+app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int maxTime, bool choseTimer, ApplicationContext dbContext,  OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
     chat.RequestParameters.Temperature = 0;
 
-    chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
-
-    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
+    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cookingtime - without extra sentences. Answer in English. Return Json in these fields: Title, ingredients, instructions and cookingtime.");
 
     //Filter: Will ensure that generated recipe will use these available tools
     var kitchenSupplies = await dbContext.KitchenSupply
@@ -76,28 +81,56 @@ app.MapGet("/GenerateRecipe", async (string query, string language, int userId, 
 
     string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryFoodItems)}";
 
+    if (choseTimer)
+    {
+        string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
+        chat.AppendUserInput(cTUserInput);
+    }
+
+
     chat.AppendUserInput(kSUserInput);
 
     chat.AppendUserInput(pFIUserInput);
+
 
     chat.AppendUserInput(query);
 
 
     var answer = await chat.GetResponseFromChatbotAsync();
 
-    return new JsonResult(answer);
+   
+    //Json-answer from AI
+    string jsonResponse = answer;
+
+    //Answer is turned into dynamic object - not needing to know its exact structure
+    var responseObject = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
+
+    //Shows result in console for debugging
+    Console.WriteLine(responseObject.ToString());
+    
+    //Converting response object into string, assign to recipeJson. Preparation for deseralisation into strong typing object
+    var recipeJson = responseObject.ToString();
+
+    // Deserialize Json-recipe information into object of RecipeViewModel
+    var recipe = JsonConvert.DeserializeObject<RecipeViewModel>(recipeJson);
+
+    
+    //await GenerateImageByRecipeTitle(recipe.Title, api);
+
+    return Results.Ok(recipe);
 });
 
 
-app.MapGet("/GenerateRecipeByFoodPreference", async (string query, string language, int userId, ApplicationContext dbContext, OpenAIAPI api) =>
+
+
+app.MapGet("/GenerateRecipeByFoodPreference", async (string query, int userId, int minTime, int maxTime, bool choseTimer, ApplicationContext dbContext, OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
     chat.RequestParameters.Temperature = 0;
+    chat.RequestParameters.ResponseFormat = ChatRequest.ResponseFormats.JsonObject;
 
-    chat.AppendSystemMessage($"Language: {language}. Query: {query}.");
-
-    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. State estimated cooking time. Answer in chosen language.");
+    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cookingtime - without extra sentences. Answer in English. Return Json in these fields: Title, ingredients, instructions and cookingtime.");
 
     var kitchenSupplies = await dbContext.KitchenSupply
     .Where(ks => ks.UserId == userId)
@@ -122,6 +155,11 @@ app.MapGet("/GenerateRecipeByFoodPreference", async (string query, string langua
 
     string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
 
+    if (choseTimer)
+    {
+        string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
+        chat.AppendUserInput(cTUserInput);
+    }
 
     chat.AppendUserInput(kSUserInput);
 
@@ -134,7 +172,27 @@ app.MapGet("/GenerateRecipeByFoodPreference", async (string query, string langua
 
     var answer = await chat.GetResponseFromChatbotAsync();
 
-    return new JsonResult(answer);
+    string jsonResponse = answer;
+
+    var responseObject = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
+
+    Console.WriteLine(responseObject.ToString());
+
+    var recipeJson = responseObject.ToString();
+
+    var recipe = JsonConvert.DeserializeObject<RecipeViewModel>(recipeJson);
+
+    //await GenerateImageByRecipeTitle(recipe.Title, api);
+
+    return Results.Ok(recipe);
 });
+
+// static async Task GenerateImageByRecipeTitle(string recipeTitle, OpenAIAPI api)
+//{
+//    var result = await api.ImageGenerations.CreateImageAsync(new ImageGenerationRequest($"Food plating image of: {recipeTitle}. Image should be appealing, like an advertisement image.", OpenAI_API.Models.Model.DALLE3));
+
+//    await Console.Out.WriteLineAsync(result.Data[0].Url);
+//};
+
 
 app.Run();
