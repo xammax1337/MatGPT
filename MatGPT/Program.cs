@@ -46,7 +46,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/GenerateRecipe", async (string query, int userId, ApplicationContext dbContext,  OpenAIAPI api) =>
+
+//User has to input ingredients and if they want to limit their cooking time
+app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int maxTime, bool choseTimer, ApplicationContext dbContext,  OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
@@ -70,9 +72,17 @@ app.MapGet("/GenerateRecipe", async (string query, int userId, ApplicationContex
 
     string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryFoodItems)}";
 
+    if (choseTimer)
+    {
+        string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
+        chat.AppendUserInput(cTUserInput);
+    }
+
+
     chat.AppendUserInput(kSUserInput);
 
     chat.AppendUserInput(pFIUserInput);
+
 
     chat.AppendUserInput(query);
 
@@ -104,7 +114,7 @@ app.MapGet("/GenerateRecipe", async (string query, int userId, ApplicationContex
 
 
 
-app.MapGet("/GenerateRecipeByFoodPreference", async (string query, int userId, ApplicationContext dbContext, OpenAIAPI api) =>
+app.MapGet("/GenerateRecipeByFoodPreference", async (string query, int userId, int minTime, int maxTime, bool choseTimer, ApplicationContext dbContext, OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
@@ -136,6 +146,11 @@ app.MapGet("/GenerateRecipeByFoodPreference", async (string query, int userId, A
 
     string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
 
+    if (choseTimer)
+    {
+        string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
+        chat.AppendUserInput(cTUserInput);
+    }
 
     chat.AppendUserInput(kSUserInput);
 
