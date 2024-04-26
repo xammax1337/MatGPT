@@ -24,6 +24,14 @@ DotNetEnv.Env.Load();
 
 builder.Services.AddControllers();
 
+// Added session service so we can use Session to check user authorization
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(20); // Set session expiration time
+});
+
+builder.Services.AddDistributedMemoryCache();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -42,10 +50,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseSession();
+
 app.UseAuthorization();
 
 app.MapControllers();
-
 
 //User has to input ingredients and if they want to limit their cooking time
 app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int maxTime, bool choseTimer, ApplicationContext dbContext,  OpenAIAPI api) =>
@@ -123,13 +132,13 @@ app.MapGet("/GenerateRecipeByFoodPreference", async (string query, int userId, i
 
     chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cookingtime - without extra sentences. Answer in English. Return Json in these fields: Title, ingredients, instructions and cookingtime.");
 
-
     var kitchenSupplies = await dbContext.KitchenSupply
     .Where(ks => ks.UserId == userId)
     .Select(ks => ks.KitchenSupplyName)
     .ToListAsync();
 
     string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
+
 
     var pantryFoodItems = await dbContext.FoodItems
     .Where(fi => fi.UserId == userId)
