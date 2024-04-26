@@ -56,8 +56,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-//User has to input ingredients and if they want to limit their cooking time
-app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int maxTime, bool choseTimer, ApplicationContext dbContext,  OpenAIAPI api) =>
+//This endpoint generates a recipe. We input ingredients, tools, food preferences etc
+app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int maxTime, bool choseTimer, int servings, bool chosePreferences, ApplicationContext dbContext, OpenAIAPI api) =>
 {
     var chat = api.Chat.CreateConversation();
     chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
@@ -81,12 +81,25 @@ app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int 
 
     string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryFoodItems)}";
 
+    //Filter: Tells AI to generate recipe according to time input
     if (choseTimer)
     {
         string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
         chat.AppendUserInput(cTUserInput);
     }
 
+    string sUserInput = $"I want {servings} servings";
+
+    //Filter: Will ensure that generated recipe adjusts according to diets/allergies
+    if (chosePreferences)
+    {
+        var foodPreference = await dbContext.FoodPreferences
+        .Where(fp => fp.UserId == userId)
+        .Select(fp => fp.FoodPreferenceName)
+        .ToListAsync();
+
+        string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
+    }
 
     chat.AppendUserInput(kSUserInput);
 
@@ -98,7 +111,7 @@ app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int 
 
     var answer = await chat.GetResponseFromChatbotAsync();
 
-   
+
     //Json-answer from AI
     string jsonResponse = answer;
 
@@ -107,85 +120,20 @@ app.MapGet("/GenerateRecipe", async (string query, int userId, int minTime, int 
 
     //Shows result in console for debugging
     Console.WriteLine(responseObject.ToString());
-    
+
     //Converting response object into string, assign to recipeJson. Preparation for deseralisation into strong typing object
     var recipeJson = responseObject.ToString();
 
     // Deserialize Json-recipe information into object of RecipeViewModel
     var recipe = JsonConvert.DeserializeObject<RecipeViewModel>(recipeJson);
 
-    
-    //await GenerateImageByRecipeTitle(recipe.Title, api);
-
-    return Results.Ok(recipe);
-});
-
-
-
-
-app.MapGet("/GenerateRecipeByFoodPreference", async (string query, int userId, int minTime, int maxTime, bool choseTimer, ApplicationContext dbContext, OpenAIAPI api) =>
-{
-    var chat = api.Chat.CreateConversation();
-    chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
-    chat.RequestParameters.Temperature = 0;
-    chat.RequestParameters.ResponseFormat = ChatRequest.ResponseFormats.JsonObject;
-
-    chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cookingtime - without extra sentences. Answer in English. Return Json in these fields: Title, ingredients, instructions and cookingtime.");
-
-    var kitchenSupplies = await dbContext.KitchenSupply
-    .Where(ks => ks.UserId == userId)
-    .Select(ks => ks.KitchenSupplyName)
-    .ToListAsync();
-
-    string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
-
-
-    var pantryFoodItems = await dbContext.FoodItems
-    .Where(fi => fi.UserId == userId)
-    .Select(fi => fi.FoodItemName)
-    .ToListAsync();
-
-    string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryFoodItems)}";
-
-    //Filter: Will ensure that generated recipe adjusts according to diets/allergies
-    var foodPreference = await dbContext.FoodPreferences
-    .Where(fp => fp.UserId == userId)
-    .Select(fp => fp.FoodPreferenceName)
-    .ToListAsync();
-
-    string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
-
-    if (choseTimer)
-    {
-        string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
-        chat.AppendUserInput(cTUserInput);
-    }
-
-    chat.AppendUserInput(kSUserInput);
-
-    chat.AppendUserInput(pFIUserInput);
-
-    chat.AppendUserInput(fPUserInput);
-
-    chat.AppendUserInput(query);
-
-
-    var answer = await chat.GetResponseFromChatbotAsync();
-
-    string jsonResponse = answer;
-
-    var responseObject = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
-
-    Console.WriteLine(responseObject.ToString());
-
-    var recipeJson = responseObject.ToString();
-
-    var recipe = JsonConvert.DeserializeObject<RecipeViewModel>(recipeJson);
 
     //await GenerateImageByRecipeTitle(recipe.Title, api);
 
     return Results.Ok(recipe);
 });
+
+
 
 // static async Task GenerateImageByRecipeTitle(string recipeTitle, OpenAIAPI api)
 //{
