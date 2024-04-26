@@ -12,6 +12,8 @@ namespace MatGPT.Data
         public DbSet<FoodPreference> FoodPreferences { get; set; }
         public DbSet <KitchenSupply> KitchenSupply { get; set;}
 
+        public DbSet<Pantry>Pantries { get; set;}
+        public DbSet<PantryFoodItem> PantryFoodItems {  get; set; }
         public ApplicationContext(DbContextOptions<ApplicationContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

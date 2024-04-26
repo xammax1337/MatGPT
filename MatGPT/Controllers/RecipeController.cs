@@ -21,6 +21,7 @@ namespace MatGPT.Controllers
             _api = api;
         }
 
+
         // Test endpoint 
         [HttpPost("GenerateRecipe")]
         public async Task<IActionResult> GenerateRecipe(string query)
