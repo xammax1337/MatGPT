@@ -1,6 +1,7 @@
 using MatGPT.Data;
 using MatGPT.Models;
 using MatGPT.Models.ViewModels;
+using MatGPT.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -17,6 +18,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 string connectionString = builder.Configuration.GetConnectionString("ApplicationContext");
 builder.Services.AddDbContext<ApplicationContext>(opt => opt.UseSqlServer(connectionString));
+
+builder.Services.AddScoped<IRecipeService, RecipeService>();
 
 DotNetEnv.Env.Load();
 
