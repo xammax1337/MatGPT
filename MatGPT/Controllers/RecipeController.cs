@@ -31,7 +31,7 @@ namespace MatGPT.Controllers
             chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
             chat.RequestParameters.Temperature = 0;
 
-            chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cookingtime - without extra sentences. Answer in English. Return Json in these fields: Title, ingredients, instructions and cookingtime.");
+            chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cookingtime - without extra sentences. Answer in English. Return Json in these fields: Title, instructions, ingredients as String and cookingtime as Int.");
 
             //Filter: Will ensure that generated recipe will use these available tools
             var kitchenSupplies = await _context.KitchenSupply
@@ -42,12 +42,12 @@ namespace MatGPT.Controllers
             string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
 
             //Filter: Will ensure that generated recipe will use these available ingredients
-            var pantryFoodItems = await _context.FoodItems
+            var pantryIngredients = await _context.Ingredients
             .Where(fi => fi.UserId == userId)
-            .Select(fi => fi.FoodItemName)
+            .Select(fi => fi.IngredientName)
             .ToListAsync();
 
-            string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryFoodItems)}";
+            string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryIngredients)}";
 
             //Filter: Tells AI to generate recipe according to time input
             if (choseTimer)
@@ -96,61 +96,34 @@ namespace MatGPT.Controllers
             var recipe = JsonConvert.DeserializeObject<RecipeViewModel>(recipeJson);
 
 
-            string imageUrl = await GenerateImageByRecipeTitle(recipe.Title, _api);
+            //string imageUrl = await GenerateImageByRecipeTitle(recipe.Title, _api);
 
             //Save the recipe to database Temporarily
             await _context.Recipes.AddAsync(new Recipe
             {
-                RecipeName = recipe.Title,
-                RecipeDescription = recipe.Instructions,
+                Title = recipe.Title,
+                Instructions = recipe.Instructions,
+                Ingredients = recipe.Ingredients,
+                CookingTime = recipe.CookingTime,
                 UserId = userId
             });
 
             await _context.SaveChangesAsync();
 
             // Combine the recipe and image URL into a single object
-            var result = new { Recipe = recipe, ImageUrl = imageUrl };
+            var result = new { Recipe = recipe};
 
             return Ok(result);
         }
 
         // Image generation Method
 
-        static async Task<string> GenerateImageByRecipeTitle(string recipeTitle, OpenAIAPI api)
-        {
-            var result = await api.ImageGenerations.CreateImageAsync(new ImageGenerationRequest($"Food plating image of: {recipeTitle}. Image should be appealing, like an advertisement image.", OpenAI_API.Models.Model.DALLE3));
+        //static async Task<string> GenerateImageByRecipeTitle(string recipeTitle, OpenAIAPI api)
+        //{
+        //    var result = await api.ImageGenerations.CreateImageAsync(new ImageGenerationRequest($"Food plating image of: {recipeTitle}. Image should be appealing, like an advertisement image.", OpenAI_API.Models.Model.DALLE3));
 
-            return result.Data[0].Url;
-        }
-
-
-        // Test endpoint with hardcoded answer.
-        [HttpPost("TestGenerateRecipe")]
-        public async Task<IActionResult> TestGenerateRecipe(string query)
-        {
-            // Retrieve user's ID from session
-            string userId = HttpContext.Session.GetString("UserId");
-
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized("User not authenticated");
-            }
-
-            //Hard coded the recipe desc for testing.
-            string answer = "Cook the food";
-
-            // gave it a temp name that stores, need a method to auto remove it if another endpoint is not contacted.
-            await _context.Recipes.AddAsync(new Recipe
-            {
-                RecipeName = "temporary recipe name",
-                RecipeDescription = answer,
-                UserId = int.Parse(userId)
-            });
-
-            await _context.SaveChangesAsync();
-
-            return new JsonResult(new { RecipeDescription = answer });
-        }
+        //    return result.Data[0].Url;
+        //}
 
 
         // This endpoint NEEDS to be called after the other ones.
@@ -185,7 +158,7 @@ namespace MatGPT.Controllers
                     return NotFound("No recipe to save.");
                 }
 
-                lastRecipe.RecipeName = recipeName;
+                lastRecipe.Title = recipeName;
 
                 try
                 {

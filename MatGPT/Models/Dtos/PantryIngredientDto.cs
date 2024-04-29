@@ -1,9 +1,9 @@
 ﻿namespace MatGPT.Models.Dtos
 {
-    public class PantryFoodItemDto
+    public class PantryIngredientDto
     {
 
         public int PantryId { get; set; }
-        public int FoodItemId { get; set; }
+        public int IngredientId { get; set; }
     }
 }

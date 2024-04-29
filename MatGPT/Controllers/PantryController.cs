@@ -37,35 +37,35 @@ namespace MatGPT.Controllers
                 return Ok($"Pantry {pantryName} added successfully.");
             }
 
-            [HttpPost("AddFoodItemToPantry")]
-            public async Task<IActionResult> AddFoodItemToPantry(PantryFoodItemDto dto, string foodItemName, string pantryName, int userId)
+            [HttpPost("AddIngredientToPantry")]
+            public async Task<IActionResult> AddIngredientToPantry(PantryIngredientDto dto, string IngredientName, string pantryName, int userId)
             {
                 
                var pantry = await _context.Pantries.FirstOrDefaultAsync(p => p.PantryName == pantryName);
 
-               var foodItem = await _context.FoodItems.FirstOrDefaultAsync(f => f.FoodItemName == foodItemName);
+               var ingredient = await _context.Ingredients.FirstOrDefaultAsync(f => f.IngredientName == IngredientName);
 
-               await _context.PantryFoodItems.AddAsync (new PantryFoodItem { PantryId = pantry.PantryId, FoodItemId = foodItem.FoodItemId });
+               await _context.PantryIngredients.AddAsync (new PantryIngredient { PantryId = pantry.PantryId, IngredientId = ingredient.IngredientId });
 
                await _context.SaveChangesAsync();
 
                return Ok($"Pantry {pantryName} added successfully.");
             }
 
-            [HttpPost("AddFoodItem")]
-            public async Task<IActionResult> AddFoodItem(FoodItemDto dto, string foodItemName,  int userId)
+            [HttpPost("AddIngredient")]
+            public async Task<IActionResult> AddIngredient(IngredientDto dto, string ingredientName,  int userId)
             {
 
-                await _context.FoodItems.AddAsync(new FoodItem
+                await _context.Ingredients.AddAsync(new Ingredient
                 {
-                    FoodItemName= foodItemName,
+                    IngredientName = ingredientName,
 
                     UserId = userId,
                 });
 
                 await _context.SaveChangesAsync();
 
-                return Ok($"FoodItem {foodItemName} added successfully.");
+                return Ok($"Ingredient {ingredientName} added successfully.");
             }
         }
 }

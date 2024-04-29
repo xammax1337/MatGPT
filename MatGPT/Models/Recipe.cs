@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
 namespace MatGPT.Models
 {
@@ -7,8 +8,9 @@ namespace MatGPT.Models
     {
         [Key]
         public int RecipeId { get; set; }
-        public string RecipeName { get; set; }
-        public string RecipeDescription { get; set; }
+        public string Title { get; set; }
+        public string Ingredients { get; set; }
+        public string Instructions { get; set; }
         public int? CookingTime { get; set; }
         [ForeignKey("User")]
         public int UserId { get; set; }
