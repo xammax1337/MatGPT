@@ -12,6 +12,6 @@ namespace MatGPT.Models
         public int UserId { get; set; }
         public User User { get; set; }
 
-        public virtual ICollection<PantryFoodItem> PantryFoodItems { get; set; }
+        public virtual ICollection<PantryIngredient> PantryIngredients { get; set; }
     }
 }

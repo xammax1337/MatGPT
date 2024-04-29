@@ -3,14 +3,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MatGPT.Models
 {
-    public class PantryFoodItem
+    public class PantryIngredient
     {
         [Key]
-        public int PantryFoodItemId { get; set; }
+        public int PantryIngredientId { get; set; }
 
-        [ForeignKey("FoodItem")]
-        public int FoodItemId { get; set; }
-        public FoodItem FoodItem { get; set; }
+        [ForeignKey("Ingredient")]
+        public int IngredientId { get; set; }
+        public Ingredient Ingredient { get; set; }
 
         [ForeignKey("Pantry")]
         public int PantryId { get; set; }
