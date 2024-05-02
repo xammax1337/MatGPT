@@ -23,7 +23,7 @@ namespace MatGPT.Controllers
             }
 
             [HttpPost("AddPantry")]
-            public async Task<IActionResult> AddToPantry(PantryDto dto, string pantryName, int userId)
+            public async Task<IActionResult> AddPantryAsync(PantryDto dto, string pantryName, int userId)
             {
                 await _context.Pantries.AddAsync(new Pantry
                 {
@@ -37,8 +37,10 @@ namespace MatGPT.Controllers
                 return Ok($"Pantry {pantryName} added successfully.");
             }
 
+        
+
             [HttpPost("AddIngredientToPantry")]
-            public async Task<IActionResult> AddIngredientToPantry(PantryIngredientDto dto, string IngredientName, string pantryName, int userId)
+            public async Task<IActionResult> AddIngredientToPantryAsync(PantryIngredientDto dto, string IngredientName, string pantryName, int userId)
             {
                 
                var pantry = await _context.Pantries.FirstOrDefaultAsync(p => p.PantryName == pantryName);
@@ -53,7 +55,7 @@ namespace MatGPT.Controllers
             }
 
             [HttpPost("AddIngredient")]
-            public async Task<IActionResult> AddIngredient(IngredientDto dto, string ingredientName,  int userId)
+            public async Task<IActionResult> AddIngredientAsync(IngredientDto dto, string ingredientName,  int userId)
             {
 
                 await _context.Ingredients.AddAsync(new Ingredient
