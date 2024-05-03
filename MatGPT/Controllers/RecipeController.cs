@@ -25,7 +25,7 @@ namespace MatGPT.Controllers
         }
         //This endpoint generates a recipe. We input ingredients, tools, food preferences etc
         [HttpPost("GenerateRecipe")]
-        public async Task<IActionResult> GenerateRecipe(string query, int userId, int minTime, int maxTime, bool choseTimer, int servings, bool chosePreferences)
+        public async Task<IActionResult> GenerateRecipeAsync(string query, int userId, int minTime, int maxTime, bool chooseTimer, int servings, bool choosePreferences)
         {
             var chat = _api.Chat.CreateConversation();
             chat.Model = OpenAI_API.Models.Model.ChatGPTTurbo;
@@ -50,7 +50,7 @@ namespace MatGPT.Controllers
             string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryIngredients)}";
 
             //Filter: Tells AI to generate recipe according to time input
-            if (choseTimer)
+            if (chooseTimer)
             {
                 string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
                 chat.AppendUserInput(cTUserInput);
@@ -59,7 +59,7 @@ namespace MatGPT.Controllers
             string sUserInput = $"I want {servings} servings";
 
             //Filter: Will ensure that generated recipe adjusts according to diets/allergies
-            if (chosePreferences)
+            if (choosePreferences)
             {
                 var foodPreference = await _context.FoodPreferences
                 .Where(fp => fp.UserId == userId)
@@ -130,7 +130,7 @@ namespace MatGPT.Controllers
         // The other endpoints will auto save recipes in "temporary storage" and then this decides if the recipe should be deleted
         // or permanently saved to a user.
         [HttpPost("SaveRecipe")]
-        public async Task<IActionResult> SaveRecipe(string recipeName, bool saveRecipe)
+        public async Task<IActionResult> SaveRecipeAsync(string recipeName, bool saveRecipe)
         {
             // Retrieve user's ID from session
             string userId = HttpContext.Session.GetString("UserId");
@@ -183,5 +183,72 @@ namespace MatGPT.Controllers
             }
 
         }
+
+        //EndPoint that will be used on the page that will allow user to choose available kitchen tools
+        [HttpPost("KitchenSupply")]
+        public async Task<IActionResult> AddOrRemoveKitchenSupplyAsync(int  userId, string kitchenSupplyName)
+        {
+            User? user = await _context.Users
+                .Include(u => u.KitchenSupplies)
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            var existingKitchenSupply = user.KitchenSupplies
+                .FirstOrDefault(ks => ks.KitchenSupplyName == kitchenSupplyName);
+
+            //If kitchen supply does not exist for user, it will be added
+            if (existingKitchenSupply == null)
+            {
+                user.KitchenSupplies.Add(new KitchenSupply { KitchenSupplyName = kitchenSupplyName});
+                await _context.SaveChangesAsync();
+                return Ok();
+            }
+            //If kitchen tool already exists - it will be removed
+            else
+            {
+                user.KitchenSupplies.Remove(existingKitchenSupply);
+                await _context.SaveChangesAsync();
+                return Ok();
+            }
+        }
+
+
+        //Endpoint that will be used on the pages that will allow user to choose diet and allergies
+        [HttpPost("FoodPreference")]
+        public async Task<IActionResult> AddOrRemoveFoodPreferenceAsync(int userId, string foodPreferenceName)
+        {
+           User? user = await _context.Users
+                .Include(u => u.FoodPreferences)
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            var existingFoodPreference = user.FoodPreferences
+                .FirstOrDefault(fp => fp.FoodPreferenceName == foodPreferenceName);
+
+            //If food preference does not exist for user, it will be added
+            if (existingFoodPreference == null)
+            {
+                user.FoodPreferences.Add(new FoodPreference { FoodPreferenceName = foodPreferenceName });
+                await _context.SaveChangesAsync();
+                return Ok();
+            }
+
+            //If food preference already exists - it will be removed
+            else
+            {
+                user.FoodPreferences.Remove(existingFoodPreference);
+                await _context.SaveChangesAsync();
+                return Ok();
+            }
+        }
+
     }
 }

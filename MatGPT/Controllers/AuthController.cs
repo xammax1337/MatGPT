@@ -21,7 +21,7 @@ namespace MatGPT.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterRequest registerReq)
+        public async Task<IActionResult> RegisterAsync(RegisterRequest registerReq)
         {
             if (_context.Credentials.Any(u => u.Email == registerReq.Email))
             {
@@ -63,7 +63,7 @@ namespace MatGPT.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginRequest loginReq)
+        public async Task<IActionResult> LoginAsync(LoginRequest loginReq)
         {
             
             // Finds the user trying to login using Email as username
@@ -116,7 +116,7 @@ namespace MatGPT.Controllers
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+        public async Task<IActionResult> LogoutAsync()
         {
             // Clear user's session
             HttpContext.Session.Clear();
