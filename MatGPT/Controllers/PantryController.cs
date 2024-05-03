@@ -182,7 +182,7 @@ namespace MatGPT.Controllers
         public async Task<IActionResult> ListPantryIngredientsAsync(int userId, string pantryName)
         {
             var pantry = _context.Pantries
-                .SingleOrDefault(p => p.PantryName == pantryName && p.UserId == userId);
+                .SingleOrDefault(p => p.PantryName.ToLower() == pantryName.ToLower() && p.UserId == userId);
 
             if (pantry == null)
             {
