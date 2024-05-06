@@ -1,7 +1,9 @@
 ﻿using MatGPT.Data;
+using MatGPT.Interfaces;
 using MatGPT.Models;
 using MatGPT.Models.Dtos;
 using MatGPT.Models.ViewModels;
+using MatGPT.Repository;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenAI_API;
@@ -16,24 +18,19 @@ namespace MatGPT.Controllers
     {
         private readonly ApplicationContext _context;
         private readonly OpenAIAPI _api;
+        private readonly IPantryRepository _pantryRepository;
 
-        public PantryController(ApplicationContext context, OpenAIAPI api)
+        public PantryController(ApplicationContext context, OpenAIAPI api, IPantryRepository pantryRepository)
         {
             _context = context;
             _api = api;
+            _pantryRepository = pantryRepository;
         }
 
         [HttpPost("AddPantry")]
         public async Task<IActionResult> AddPantryAsync(PantryDto dto, string pantryName, int userId)
         {
-            await _context.Pantries.AddAsync(new Pantry
-            {
-                PantryName = pantryName,
-
-                UserId = userId,
-            });
-
-            await _context.SaveChangesAsync();
+            await _pantryRepository.AddPantryAsync(dto, pantryName, userId);
 
             return Ok($"Pantry {pantryName} added successfully.");
         }
@@ -44,46 +41,32 @@ namespace MatGPT.Controllers
         [HttpDelete("DeletePantry")]
         public async Task<IActionResult> DeletePantryAsync(int userId, string pantryName)
         {
-            var pantryToDelete = _context.Pantries
-                .Include(p => p.PantryIngredients)
-                .FirstOrDefault(p => p.UserId == userId && p.PantryName.ToLower() == pantryName.ToLower());
+            await _pantryRepository.DeletePantryAsync(userId, pantryName);
 
-            if (pantryToDelete == null)
-            {
-                return NotFound($"{pantryName} not found");
-            }
-
-            //Deletes pantryingredients first
-            _context.PantryIngredients.RemoveRange(pantryToDelete.PantryIngredients);
-            _context.Pantries.Remove(pantryToDelete);
-            await _context.SaveChangesAsync();
             return Ok($"{pantryName} deleted");
         }
 
         [HttpGet("ListPantry")]
         public async Task<IActionResult> ListUsersPantriesAsync(int userId)
         {
-            User? user = await _context.Users
-                 .Include(u => u.Pantries)
-                 .SingleOrDefaultAsync(u => u.UserId == userId);
-
-            if (user == null)
+            try
             {
-                throw new Exception("User or pantry not found");
+                var pantries = await _pantryRepository.ListPantriesFromUserAsync(userId);
+
+                if (pantries == null)
+                {
+                    return NotFound("not found");
+                }
+
+                return Ok(pantries);
+
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
             }
 
-   
-            List<PantryViewModel> result = user.Pantries
-                .Select(p => new PantryViewModel()
-                {
-                    PantryName = p.PantryName,
-                }).ToList();
-
-            return Ok(result);
-
         }
-
-
 
         [HttpPost("AddIngredientToPantry")]
         public async Task<IActionResult> AddIngredientToPantryAsync(PantryIngredientDto dto, string IngredientName, string pantryName, int userId)
@@ -97,7 +80,7 @@ namespace MatGPT.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok($"Pantry {pantryName} added successfully.");
+            return Ok($"{IngredientName} added to {pantryName} successfully.");
         }
 
         //Use GET-endpoint to list PantryIngredients first,
@@ -119,82 +102,51 @@ namespace MatGPT.Controllers
             return Ok("Ingredient deleted from pantry");
         }
 
-
-        [HttpPost("AddIngredient")]
-        public async Task<IActionResult> AddIngredientAsync(IngredientDto dto, string ingredientName, int userId)
-        {
-
-            await _context.Ingredients.AddAsync(new Ingredient
-            {
-                IngredientName = ingredientName,
-
-                UserId = userId,
-            });
-
-            await _context.SaveChangesAsync();
-
-            return Ok($"Ingredient {ingredientName} added successfully.");
-        }
-
-        //In order to use the DELETEs: We have to use the GET that lists the items first,
-        //then we use the DELETE
-        [HttpDelete("DeleteIngredient")]
-        public async Task<IActionResult> DeleteIngredientAsync(int userId, string ingredientName)
-        {
-            var ingredientToDelete = _context.Ingredients
-                .FirstOrDefault(i => i.UserId == userId && i.IngredientName.ToLower() == ingredientName.ToLower());
-
-            if (ingredientToDelete == null)
-            {
-                return NotFound($"{ingredientName} not found");
-            }
-
-            _context.Ingredients.Remove(ingredientToDelete);
-
-            await _context.SaveChangesAsync();
-
-            return Ok($"{ingredientName} deleted");
-        }
-
-        [HttpGet("ListIngredients")]
-        public async Task<IActionResult> ListUsersIngredientsAsync(int userId)
-        {
-            User? user = await _context.Users
-                .Include(u => u.Ingredients)//fel namn i databas!!!!!!
-                .SingleOrDefaultAsync(u => u.UserId == userId);
-
-            if (user == null)
-            {
-                throw new Exception("User or ingredient not found");
-            }
-
-            List<IngredientViewModel> result = user.Ingredients
-                .Select(i => new IngredientViewModel()
-                {
-                    IngredientName = i.IngredientName
-                }).ToList();
-
-            return Ok(result);
-        }
-
-
         [HttpGet("ListPantryIngredientsAsync")]
-        public async Task<IActionResult> ListPantryIngredientsAsync(int userId, string pantryName)
+        public async Task<IEnumerable<PantryIngredientDto>> ListPantryIngredientsAsync(int userId, int pantryId)
         {
-            var pantry = _context.Pantries
-                .SingleOrDefault(p => p.PantryName.ToLower() == pantryName.ToLower() && p.UserId == userId);
+            //var pantry = _context.Pantries
+            //    .SingleOrDefault(p => p.PantryName.ToLower() == pantryName.ToLower() && p.UserId == userId);
 
-            if (pantry == null)
-            {
-                return NotFound("Pantry not found");
-            }
+            //if (pantry == null)
+            //{
+            //    return NotFound("Pantry not found");
+            //}
+
+            //var pantryIngredients = await _context.PantryIngredients
+            //    .Where(pi => pi.PantryId == pantry.PantryId)
+            //    .Select(pi => pi.Ingredient)
+            //    .ToListAsync();
+
+            //return Ok(pantryIngredients);
+
+            var user = await _context.Users
+                .Include(u => u.Pantries)
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            var pantry = user.Pantries.FirstOrDefault(p => p.PantryId == pantryId);
 
             var pantryIngredients = await _context.PantryIngredients
-                .Where(pi => pi.PantryId == pantry.PantryId)
-                .Select(pi => pi.Ingredient)
-                .ToListAsync();
+               .Include(pi => pi.Ingredient)
+               .Where(pi => pi.PantryId == pantryId)
+               .ToListAsync();
 
-            return Ok(pantryIngredients);
+            // Check if there are any pantry ingredients
+            if (pantryIngredients == null || !pantryIngredients.Any())
+            {
+                return Enumerable.Empty<PantryIngredientDto>();
+            }
+
+            var ingredientViewModel = pantryIngredients
+                    .Select(pi => new PantryIngredientDto
+                    {
+                        PantryId = pi.PantryId,
+                        IngredientId = pi.IngredientId,
+                        IngredientName = pi.Ingredient.IngredientName // Assuming there's a property 'Name' in the Ingredient entity
+                    })
+                    .ToList();
+
+            return ingredientViewModel;
         }
     }
 }
