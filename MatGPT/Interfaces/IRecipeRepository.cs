@@ -1,4 +1,5 @@
 ﻿using MatGPT.Models;
+using MatGPT.Models.ViewModels;
 
 namespace MatGPT.Interfaces
 {
@@ -13,6 +14,7 @@ namespace MatGPT.Interfaces
         Task<Recipe> GetLastRecipeAsync(int userId);
         Task<Recipe> RemoveLastRecipeAsync(int userId);
         Task<Recipe> SaveRecipeAsync(Recipe recipe);
+        Task<IEnumerable<RecipeViewModel>> ListUsersRecipe(int userId);
 
         Task SaveChangesAsync();
     }

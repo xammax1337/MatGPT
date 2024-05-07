@@ -26,8 +26,22 @@ namespace MatGPT.Controllers
         [HttpPost("AddIngredient")]
         public async Task<IActionResult> AddIngredientAsync(IngredientDto dto, string ingredientName, int userId)
         {
-            await _ingredientRepository.AddIngredientAsync(dto, ingredientName, userId);
-            return Ok($"Ingredient {ingredientName} added successfully.");
+            try
+            {
+                var ingredient = await _ingredientRepository.AddIngredientAsync(dto, ingredientName, userId);
+
+                if (ingredient == null)
+                {
+                    return NotFound("not found");
+                }
+
+                return Ok($"Ingredient {ingredientName} added successfully.");
+
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
         //In order to use the DELETEs: We have to use the GET that lists the items first,
@@ -35,8 +49,22 @@ namespace MatGPT.Controllers
         [HttpDelete("DeleteIngredient")]
         public async Task<IActionResult> DeleteIngredientAsync(int userId, string ingredientName)
         {
-            await _ingredientRepository.DeleteIngredientAsync(userId, ingredientName);
-            return Ok($"{ingredientName} deleted");
+            try
+            {
+                var ingredients = await _ingredientRepository.DeleteIngredientAsync(userId, ingredientName);
+
+                if (ingredients == null)
+                {
+                    return NotFound("not found");
+                }
+
+                return Ok($"{ingredientName} deleted");
+
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
         [HttpGet("ListIngredients")]
@@ -44,14 +72,14 @@ namespace MatGPT.Controllers
         {
             try
             {
-                var pantries = await _ingredientRepository.ListIngredientsFromUserAsync(userId);
+                var ingredients = await _ingredientRepository.ListIngredientsFromUserAsync(userId);
 
-                if (pantries == null)
+                if (ingredients == null)
                 {
                     return NotFound("not found");
                 }
 
-                return Ok(pantries);
+                return Ok(ingredients);
 
             }
             catch (Exception ex)

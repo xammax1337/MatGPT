@@ -35,7 +35,7 @@ namespace MatGPT.Controllers
         }
 
         [HttpGet("ListFoodPreference")]
-        public async Task<IActionResult> GetKitchenSupplyFromUserAsync(int userId)
+        public async Task<IActionResult> ListFoodPreferenceFromUserAsync(int userId)
         {
             try
             {

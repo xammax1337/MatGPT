@@ -1,6 +1,7 @@
 ﻿using MatGPT.Data;
 using MatGPT.Interfaces;
 using MatGPT.Models;
+using MatGPT.Models.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace MatGPT.Repository
@@ -80,5 +81,27 @@ namespace MatGPT.Repository
             await _context.SaveChangesAsync();
         }
 
+        public async Task<IEnumerable<RecipeViewModel>> ListUsersRecipe(int userId)
+        {
+            var user = await _context.Users
+                .Include(u => u.Recipes)
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            if (user == null)
+            {
+                throw new Exception("User not found");
+            }
+
+            var recipeViewModel = user.Recipes
+                .Select(r => new RecipeViewModel
+                {
+                    Title = r.Title,
+                    Instructions = r.Instructions,
+                    Ingredients = r.Ingredients,
+                    CookingTime = r.CookingTime
+                });
+
+            return recipeViewModel;
+        }
     }
 }

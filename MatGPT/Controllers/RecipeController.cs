@@ -166,5 +166,12 @@ namespace MatGPT.Controllers
                 return Ok("Recipe not saved, deleted from database.");
             }
         }
+
+        [HttpGet("ListRecipe")]
+        public async Task<IEnumerable<RecipeViewModel>> ListUsersRecipe(int userId)
+        {
+            var recipes = await _recipeRepository.ListUsersRecipe(userId);
+            return (recipes);
+        }
     }
 }

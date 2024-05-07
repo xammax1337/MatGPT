@@ -30,9 +30,22 @@ namespace MatGPT.Controllers
         [HttpPost("AddPantry")]
         public async Task<IActionResult> AddPantryAsync(PantryDto dto, string pantryName, int userId)
         {
-            await _pantryRepository.AddPantryAsync(dto, pantryName, userId);
+            try
+            {
+                var pantries = await _pantryRepository.AddPantryAsync(dto, pantryName, userId);
 
-            return Ok($"Pantry {pantryName} added successfully.");
+                if (pantries == null)
+                {
+                    return NotFound("not found");
+                }
+
+                return Ok($"Pantry {pantryName} added successfully.");
+
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
 
@@ -41,9 +54,22 @@ namespace MatGPT.Controllers
         [HttpDelete("DeletePantry")]
         public async Task<IActionResult> DeletePantryAsync(int userId, string pantryName)
         {
-            await _pantryRepository.DeletePantryAsync(userId, pantryName);
+            try
+            {
+                var pantries = await _pantryRepository.DeletePantryAsync(userId, pantryName);
 
-            return Ok($"{pantryName} deleted");
+                if (pantries == null)
+                {
+                    return NotFound("not found");
+                }
+
+                return Ok($"{pantryName} deleted");
+
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
         [HttpGet("ListPantry")]
@@ -69,84 +95,54 @@ namespace MatGPT.Controllers
         }
 
         [HttpPost("AddIngredientToPantry")]
-        public async Task<IActionResult> AddIngredientToPantryAsync(PantryIngredientDto dto, string IngredientName, string pantryName, int userId)
+        public async Task<IActionResult> AddIngredientToPantryAsync(PantryIngredientDto dto, string ingredientName, string pantryName, int userId)
         {
+            try
+            {
+                await _pantryRepository.AddIngredientToPantryAsync(dto, ingredientName, pantryName, userId);
 
-            var pantry = await _context.Pantries.FirstOrDefaultAsync(p => p.PantryName == pantryName);
+                return Ok($"{ingredientName} added to {pantryName} successfully.");
 
-            var ingredient = await _context.Ingredients.FirstOrDefaultAsync(f => f.IngredientName == IngredientName);
-
-            await _context.PantryIngredients.AddAsync(new PantryIngredient { PantryId = pantry.PantryId, IngredientId = ingredient.IngredientId });
-
-            await _context.SaveChangesAsync();
-
-            return Ok($"{IngredientName} added to {pantryName} successfully.");
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
         //Use GET-endpoint to list PantryIngredients first,
         //then use this one.
         //Can we use LINQ to look up name - and then delete connection?
         [HttpDelete("DeleteIngredientFromPantry")]
-        public async Task<IActionResult> DeleteIngredientFromPantryAsync(int pantryIngredientId)
+        public async Task<IActionResult> DeleteIngredientFromPantryAsync(int userId, string ingredientName, string pantryName)
         {
-            var ingredientToDeleteFromPantry = _context.PantryIngredients
-                .SingleOrDefault(p => p.PantryIngredientId == pantryIngredientId);
-
-            if (ingredientToDeleteFromPantry == null)
+            try
             {
-                throw new Exception($"Pantry or ingredient not found");
-            }
+                await _pantryRepository.DeleteIngredientFromPantryAsync(userId, ingredientName, pantryName);
 
-            _context.PantryIngredients.Remove(ingredientToDeleteFromPantry);
-            _context.SaveChanges();
-            return Ok("Ingredient deleted from pantry");
+                return Ok($"{ingredientName} deleted from {pantryName}");
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
+        // Change and fix the error handling!!!!!!!
         [HttpGet("ListPantryIngredientsAsync")]
-        public async Task<IEnumerable<PantryIngredientDto>> ListPantryIngredientsAsync(int userId, int pantryId)
+        public async Task<IEnumerable<PantryIngredientDto>> ListPantryIngredientsAsync(int userId, string pantryName)
         {
-            //var pantry = _context.Pantries
-            //    .SingleOrDefault(p => p.PantryName.ToLower() == pantryName.ToLower() && p.UserId == userId);
-
-            //if (pantry == null)
-            //{
-            //    return NotFound("Pantry not found");
-            //}
-
-            //var pantryIngredients = await _context.PantryIngredients
-            //    .Where(pi => pi.PantryId == pantry.PantryId)
-            //    .Select(pi => pi.Ingredient)
-            //    .ToListAsync();
-
-            //return Ok(pantryIngredients);
-
-            var user = await _context.Users
-                .Include(u => u.Pantries)
-                .FirstOrDefaultAsync(u => u.UserId == userId);
-
-            var pantry = user.Pantries.FirstOrDefault(p => p.PantryId == pantryId);
-
-            var pantryIngredients = await _context.PantryIngredients
-               .Include(pi => pi.Ingredient)
-               .Where(pi => pi.PantryId == pantryId)
-               .ToListAsync();
-
-            // Check if there are any pantry ingredients
-            if (pantryIngredients == null || !pantryIngredients.Any())
+            try
             {
-                return Enumerable.Empty<PantryIngredientDto>();
+                var listofPantryIngredients = await _pantryRepository.ListPantryIngredientsAsync(userId, pantryName);
+
+                return listofPantryIngredients;
             }
-
-            var ingredientViewModel = pantryIngredients
-                    .Select(pi => new PantryIngredientDto
-                    {
-                        PantryId = pi.PantryId,
-                        IngredientId = pi.IngredientId,
-                        IngredientName = pi.Ingredient.IngredientName // Assuming there's a property 'Name' in the Ingredient entity
-                    })
-                    .ToList();
-
-            return ingredientViewModel;
+            
+            catch(Exception ex)
+            {
+                throw;
+            }
         }
     }
 }
