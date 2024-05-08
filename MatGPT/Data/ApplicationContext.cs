@@ -10,7 +10,7 @@ namespace MatGPT.Data
         public DbSet<Ingredient> Ingredients { get; set; }
         public DbSet<Recipe> Recipes { get; set; }
         public DbSet<FoodPreference> FoodPreferences { get; set; }
-        public DbSet <KitchenSupply> KitchenSupply { get; set;}
+        public DbSet <KitchenSupply> KitchenSupplies { get; set;}
 
         public DbSet<Pantry>Pantries { get; set;}
         public DbSet<PantryIngredient> PantryIngredients {  get; set; }
