@@ -87,7 +87,7 @@ namespace MatGPT.Controllers
             // When logged in saves UserId in session so it can be used in other endpoints
             HttpContext.Session.SetString("UserId", user.UserId.ToString());
 
-            return Ok(new { message = $"Login successful! Welcome back {user.FirstName}!" });
+            return Ok(new { message = $"Login successful! Welcome back {user.FirstName}, userId: {user.UserId}!" });
         }
 
         // Generate the salt for password
