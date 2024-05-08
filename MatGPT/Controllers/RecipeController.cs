@@ -95,10 +95,10 @@ namespace MatGPT.Controllers
             //string imageUrl = await GenerateImageByRecipeTitle(recipe.Title, _api);
 
             //Automatically save the recipe to database Temporarily (Later call the SaveRecipe Endpoint to delete or save permanently
-            await _recipeRepository.SaveRecipeAsync(recipe);
+            //await _recipeRepository.SaveRecipeAsync(recipe);
 
             // Combine the recipe and image URL into a single object
-            var result = new { Recipe = recipe};
+            var result = new { Recipe = recipe };
 
             return Ok(result);
         }
@@ -157,7 +157,7 @@ namespace MatGPT.Controllers
             else
             {
                 var lastRecipe = await _recipeRepository.RemoveLastRecipeAsync(int.Parse(userId));
-                
+
                 if (lastRecipe == null)
                 {
                     return NotFound("No recipe to delete");
@@ -172,6 +172,55 @@ namespace MatGPT.Controllers
         {
             var recipes = await _recipeRepository.ListUsersRecipe(userId);
             return (recipes);
+        }
+
+        [HttpPost("TestGenerateRecipe")]
+        public async Task<IActionResult> TestGenerateRecipeAsync(string query, int userId, int minTime, int maxTime, bool chooseTimer, int servings, bool choosePreferences)
+        {
+            //Filter: Will ensure that generated recipe will use these available tools
+            var kitchenSupplies = await _recipeRepository.GetKitchenSuppliesAsync(userId);
+
+            string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
+
+            //Filter: Will ensure that generated recipe will use these available ingredients
+            var pantryIngredients = await _recipeRepository.GetIngredientsAsync(userId);
+
+            string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryIngredients)}";
+
+            //Filter: Tells AI to generate recipe according to time input
+            if (chooseTimer)
+            {
+                string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
+
+            }
+
+            string sUserInput = $"I want {servings} servings";
+
+            //Filter: Will ensure that generated recipe adjusts according to diets/allergies
+            if (choosePreferences)
+            {
+                var foodPreference = await _recipeRepository.GetPreferencesAsync(userId);
+
+                string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
+            }
+
+            var recipe = new RecipeViewModel
+            {
+                Title = "Chicken Pasta with Tomato Sauce",
+                Ingredients = "Chicken, Tomato, Pasta",
+                Instructions = "1. Cook the pasta according to package instructions. 2. In a frying pan, cook the chicken until browned. 3. Add chopped tomatoes to the chicken and cook until they soften. 4. Mix in the cooked pasta and simmer for a few minutes. 5. Serve hot.",
+                CookingTime = 30
+            };
+
+            string imageUrl = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=2680&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+
+            //Automatically save the recipe to database Temporarily (Later call the SaveRecipe Endpoint to delete or save permanently
+            //await _recipeRepository.SaveRecipeAsync(recipe);
+
+            // Combine the recipe and image URL into a single object
+            var result = new { Recipe = recipe, ImageUrl = imageUrl };
+
+            return Ok(result);
         }
     }
 }
