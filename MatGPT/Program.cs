@@ -1,6 +1,9 @@
 using MatGPT.Data;
+using MatGPT.Interfaces;
 using MatGPT.Models;
 using MatGPT.Models.ViewModels;
+using MatGPT.Repository;
+using MatGPT.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -17,6 +20,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 string connectionString = builder.Configuration.GetConnectionString("ApplicationContext");
 builder.Services.AddDbContext<ApplicationContext>(opt => opt.UseSqlServer(connectionString));
+//Repositories
+builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
+builder.Services.AddScoped<IKitchenSupplyRepository, KitchenSupplyRepository>();
+builder.Services.AddScoped<IFoodPreferenceRepository, FoodPreferenceRepository>();
+builder.Services.AddScoped<IPantryRepository, PantryRepository>();
+builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
 
 DotNetEnv.Env.Load();
 

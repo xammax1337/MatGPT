@@ -8,6 +8,8 @@ using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using OpenAI_API;
 using OpenAI_API.Images;
+using MatGPT.Repository;
+using MatGPT.Interfaces;
 
 namespace MatGPT.Controllers
 {
@@ -18,11 +20,15 @@ namespace MatGPT.Controllers
         private readonly ApplicationContext _context;
         private readonly OpenAIAPI _api;
 
-        public RecipeController(ApplicationContext dbContext, OpenAIAPI api)
+        private readonly IRecipeRepository _recipeRepository;
+
+        public RecipeController(ApplicationContext dbContext, OpenAIAPI api, IRecipeRepository recipeRepository)
         {
+            _recipeRepository = recipeRepository;
             _context = dbContext;
             _api = api;
         }
+
         //This endpoint generates a recipe. We input ingredients, tools, food preferences etc
         [HttpPost("GenerateRecipe")]
         public async Task<IActionResult> GenerateRecipeAsync(string query, int userId, int minTime, int maxTime, bool chooseTimer, int servings, bool choosePreferences)
@@ -34,18 +40,12 @@ namespace MatGPT.Controllers
             chat.AppendSystemMessage("You will generate recipes ONLY based on the ingredients provided to you. Do not add things that are not specified as available. Only append title, ingredients, how to make the recipe and state estimated cookingtime - without extra sentences. Answer in English. Return Json in these fields: Title, instructions, ingredients as String and cookingtime as Int.");
 
             //Filter: Will ensure that generated recipe will use these available tools
-            var kitchenSupplies = await _context.KitchenSupply
-            .Where(ks => ks.UserId == userId)
-            .Select(ks => ks.KitchenSupplyName)
-            .ToListAsync();
+            var kitchenSupplies = await _recipeRepository.GetKitchenSuppliesAsync(userId);
 
             string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
 
             //Filter: Will ensure that generated recipe will use these available ingredients
-            var pantryIngredients = await _context.Ingredients
-            .Where(fi => fi.UserId == userId)
-            .Select(fi => fi.IngredientName)
-            .ToListAsync();
+            var pantryIngredients = await _recipeRepository.GetIngredientsAsync(userId);
 
             string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryIngredients)}";
 
@@ -61,10 +61,7 @@ namespace MatGPT.Controllers
             //Filter: Will ensure that generated recipe adjusts according to diets/allergies
             if (choosePreferences)
             {
-                var foodPreference = await _context.FoodPreferences
-                .Where(fp => fp.UserId == userId)
-                .Select(fp => fp.FoodPreferenceName)
-                .ToListAsync();
+                var foodPreference = await _recipeRepository.GetPreferencesAsync(userId);
 
                 string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
             }
@@ -78,7 +75,6 @@ namespace MatGPT.Controllers
 
 
             var answer = await chat.GetResponseFromChatbotAsync();
-
 
             //Json-answer from AI
             string jsonResponse = answer;
@@ -95,23 +91,14 @@ namespace MatGPT.Controllers
             // Deserialize Json-recipe information into object of RecipeViewModel
             var recipe = JsonConvert.DeserializeObject<RecipeViewModel>(recipeJson);
 
-
+            //Generate image and get the URL link
             //string imageUrl = await GenerateImageByRecipeTitle(recipe.Title, _api);
 
-            //Save the recipe to database Temporarily
-            await _context.Recipes.AddAsync(new Recipe
-            {
-                Title = recipe.Title,
-                Instructions = recipe.Instructions,
-                Ingredients = recipe.Ingredients,
-                CookingTime = recipe.CookingTime,
-                UserId = userId
-            });
-
-            await _context.SaveChangesAsync();
+            //Automatically save the recipe to database Temporarily (Later call the SaveRecipe Endpoint to delete or save permanently
+            //await _recipeRepository.SaveRecipeAsync(recipe);
 
             // Combine the recipe and image URL into a single object
-            var result = new { Recipe = recipe};
+            var result = new { Recipe = recipe };
 
             return Ok(result);
         }
@@ -130,7 +117,7 @@ namespace MatGPT.Controllers
         // The other endpoints will auto save recipes in "temporary storage" and then this decides if the recipe should be deleted
         // or permanently saved to a user.
         [HttpPost("SaveRecipe")]
-        public async Task<IActionResult> SaveRecipeAsync(string recipeName, bool saveRecipe)
+        public async Task<IActionResult> SaveOrRemoveRecipeAsync(string recipeName, bool saveRecipe)
         {
             // Retrieve user's ID from session
             string userId = HttpContext.Session.GetString("UserId");
@@ -148,10 +135,7 @@ namespace MatGPT.Controllers
                 }
 
                 // Find the last saved recipe by sorting by userid and latest recipe
-                var lastRecipe = await _context.Recipes
-                    .Where(r => r.UserId == int.Parse(userId))
-                    .OrderByDescending(r => r.RecipeId)
-                    .FirstOrDefaultAsync();
+                var lastRecipe = await _recipeRepository.GetLastRecipeAsync(int.Parse(userId));
 
                 if (lastRecipe == null)
                 {
@@ -162,7 +146,7 @@ namespace MatGPT.Controllers
 
                 try
                 {
-                    await _context.SaveChangesAsync();
+                    await _recipeRepository.SaveChangesAsync();
                     return Ok($"Saved the recipe as {recipeName}");
                 }
                 catch (DbUpdateException ex)
@@ -172,83 +156,71 @@ namespace MatGPT.Controllers
             }
             else
             {
-                var lastRecipe = await _context.Recipes
-                    .Where(r => r.UserId == int.Parse(userId))
-                    .OrderByDescending(r => r.RecipeId)
-                    .FirstOrDefaultAsync();
+                var lastRecipe = await _recipeRepository.RemoveLastRecipeAsync(int.Parse(userId));
 
-                _context.Recipes.Remove(lastRecipe);
-                await _context.SaveChangesAsync();
-                return Ok("Recipe not saved, deleted from db.");
+                if (lastRecipe == null)
+                {
+                    return NotFound("No recipe to delete");
+                }
+
+                return Ok("Recipe not saved, deleted from database.");
             }
-
         }
 
-        //EndPoint that will be used on the page that will allow user to choose available kitchen tools
-        [HttpPost("KitchenSupply")]
-        public async Task<IActionResult> AddOrRemoveKitchenSupplyAsync(int  userId, string kitchenSupplyName)
+        [HttpGet("ListRecipe")]
+        public async Task<IEnumerable<RecipeViewModel>> ListUsersRecipe(int userId)
         {
-            User? user = await _context.Users
-                .Include(u => u.KitchenSupplies)
-                .FirstOrDefaultAsync(u => u.UserId == userId);
-
-            if (user == null)
-            {
-                return NotFound("User not found");
-            }
-
-            var existingKitchenSupply = user.KitchenSupplies
-                .FirstOrDefault(ks => ks.KitchenSupplyName == kitchenSupplyName);
-
-            //If kitchen supply does not exist for user, it will be added
-            if (existingKitchenSupply == null)
-            {
-                user.KitchenSupplies.Add(new KitchenSupply { KitchenSupplyName = kitchenSupplyName});
-                await _context.SaveChangesAsync();
-                return Ok();
-            }
-            //If kitchen tool already exists - it will be removed
-            else
-            {
-                user.KitchenSupplies.Remove(existingKitchenSupply);
-                await _context.SaveChangesAsync();
-                return Ok();
-            }
+            var recipes = await _recipeRepository.ListUsersRecipe(userId);
+            return (recipes);
         }
 
-
-        //Endpoint that will be used on the pages that will allow user to choose diet and allergies
-        [HttpPost("FoodPreference")]
-        public async Task<IActionResult> AddOrRemoveFoodPreferenceAsync(int userId, string foodPreferenceName)
+        [HttpPost("TestGenerateRecipe")]
+        public async Task<IActionResult> TestGenerateRecipeAsync(string query, int userId, int minTime, int maxTime, bool chooseTimer, int servings, bool choosePreferences)
         {
-           User? user = await _context.Users
-                .Include(u => u.FoodPreferences)
-                .FirstOrDefaultAsync(u => u.UserId == userId);
+            //Filter: Will ensure that generated recipe will use these available tools
+            var kitchenSupplies = await _recipeRepository.GetKitchenSuppliesAsync(userId);
 
-            if (user == null)
+            string kSUserInput = $"I have these tools available for cooking: {string.Join(", ", kitchenSupplies)}";
+
+            //Filter: Will ensure that generated recipe will use these available ingredients
+            var pantryIngredients = await _recipeRepository.GetIngredientsAsync(userId);
+
+            string pFIUserInput = $"I have these ingredients in my usual pantry: {string.Join(", ", pantryIngredients)}";
+
+            //Filter: Tells AI to generate recipe according to time input
+            if (chooseTimer)
             {
-                return NotFound("User not found");
+                string cTUserInput = $"I want a recipe with cooking time between {minTime}-{maxTime} minutes.";
+
             }
 
-            var existingFoodPreference = user.FoodPreferences
-                .FirstOrDefault(fp => fp.FoodPreferenceName == foodPreferenceName);
+            string sUserInput = $"I want {servings} servings";
 
-            //If food preference does not exist for user, it will be added
-            if (existingFoodPreference == null)
+            //Filter: Will ensure that generated recipe adjusts according to diets/allergies
+            if (choosePreferences)
             {
-                user.FoodPreferences.Add(new FoodPreference { FoodPreferenceName = foodPreferenceName });
-                await _context.SaveChangesAsync();
-                return Ok();
+                var foodPreference = await _recipeRepository.GetPreferencesAsync(userId);
+
+                string fPUserInput = $"I want a recipe that takes these allergies or diets into consideration: {string.Join(", ", foodPreference)}";
             }
 
-            //If food preference already exists - it will be removed
-            else
+            var recipe = new RecipeViewModel
             {
-                user.FoodPreferences.Remove(existingFoodPreference);
-                await _context.SaveChangesAsync();
-                return Ok();
-            }
+                Title = "Chicken Pasta with Tomato Sauce",
+                Ingredients = "Chicken, Tomato, Pasta",
+                Instructions = "1. Cook the pasta according to package instructions. 2. In a frying pan, cook the chicken until browned. 3. Add chopped tomatoes to the chicken and cook until they soften. 4. Mix in the cooked pasta and simmer for a few minutes. 5. Serve hot.",
+                CookingTime = 30
+            };
+
+            string imageUrl = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=2680&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+
+            //Automatically save the recipe to database Temporarily (Later call the SaveRecipe Endpoint to delete or save permanently
+            //await _recipeRepository.SaveRecipeAsync(recipe);
+
+            // Combine the recipe and image URL into a single object
+            var result = new { Recipe = recipe, ImageUrl = imageUrl };
+
+            return Ok(result);
         }
-
     }
 }
