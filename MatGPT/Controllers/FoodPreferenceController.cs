@@ -1,6 +1,8 @@
 ﻿using MatGPT.Data;
 using MatGPT.Interfaces;
 using MatGPT.Repository;
+using MatGPT.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MatGPT.Controllers
@@ -9,20 +11,28 @@ namespace MatGPT.Controllers
     [Route("[controller]")]
     public class FoodPreferenceController : Controller
     {
-        private readonly ApplicationContext _context;
+        private readonly UserService _userService;
 
         private readonly IFoodPreferenceRepository _foodPreferenceRepository;
 
-        public FoodPreferenceController(ApplicationContext dbContext, IFoodPreferenceRepository foodPreferenceRepository)
+        public FoodPreferenceController(UserService userService, IFoodPreferenceRepository foodPreferenceRepository)
         {
             _foodPreferenceRepository = foodPreferenceRepository;
-            _context = dbContext;
+            _userService = userService;
         }
 
         //Endpoint that will be used on the pages that will allow user to choose diet and allergies
         [HttpPost("FoodPreference")]
-        public async Task<IActionResult> AddOrRemoveFoodPreferenceAsync(int userId, string foodPreferenceName)
+        [Authorize]
+        public async Task<IActionResult> AddOrRemoveFoodPreferenceAsync(string foodPreferenceName)
         {
+            // Gets the userId from the JWTtoken and checks if hte userId is not -1
+            int userId = _userService.GetUserIdFromToken(User);
+            if (userId == -1)
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+
             try
             {
                 string result = await _foodPreferenceRepository.AddOrRemoveFoodPreferenceAsync(userId, foodPreferenceName);
@@ -35,8 +45,15 @@ namespace MatGPT.Controllers
         }
 
         [HttpGet("ListFoodPreference")]
-        public async Task<IActionResult> ListFoodPreferenceFromUserAsync(int userId)
+        [Authorize]
+        public async Task<IActionResult> ListFoodPreferenceFromUserAsync()
         {
+            // Gets the userId from the JWTtoken and checks if hte userId is not -1
+            int userId = _userService.GetUserIdFromToken(User);
+            if (userId == -1)
+            {
+                return Unauthorized("User ID not found in token.");
+            }
             try
             {
                 var foodPreferences = await _foodPreferenceRepository.ListFoodPreferenceFromUserAsync(userId);
