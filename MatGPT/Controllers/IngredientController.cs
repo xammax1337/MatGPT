@@ -28,6 +28,11 @@ namespace MatGPT.Controllers
         {
             try
             {
+                if (userId <= 0)
+                {
+                    return BadRequest("Invalid input parameters.");
+                }
+
                 var ingredient = await _ingredientRepository.AddIngredientAsync(dto, ingredientName, userId);
 
                 if (ingredient == null)
@@ -40,7 +45,7 @@ namespace MatGPT.Controllers
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -51,6 +56,11 @@ namespace MatGPT.Controllers
         {
             try
             {
+                if (userId <= 0)
+                {
+                    return BadRequest("Invalid input parameters.");
+                }
+
                 var ingredients = await _ingredientRepository.DeleteIngredientAsync(userId, ingredientName);
 
                 if (ingredients == null)
@@ -63,7 +73,7 @@ namespace MatGPT.Controllers
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -72,6 +82,11 @@ namespace MatGPT.Controllers
         {
             try
             {
+                if (userId <= 0)
+                {
+                    return BadRequest("Invalid input parameters.");
+                }
+
                 var ingredients = await _ingredientRepository.ListIngredientsFromUserAsync(userId);
 
                 if (ingredients == null)

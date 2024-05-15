@@ -1,4 +1,4 @@
-﻿using MatGPT.Data;
+using MatGPT.Data;
 using MatGPT.Interfaces;
 using MatGPT.Repository;
 using MatGPT.Services;
@@ -35,15 +35,28 @@ namespace MatGPT.Controllers
 
             try
             {
+                var userExists = await _foodPreferenceRepository.UserExistsAsync(userId);
+
+                if (!userExists)
+                {
+                    return NotFound("User not found");
+                }
+
+                if (string.IsNullOrEmpty(foodPreferenceName))
+                {
+                    return BadRequest("Food preference name cannot be empty");
+                }
+
                 string result = await _foodPreferenceRepository.AddOrRemoveFoodPreferenceAsync(userId, foodPreferenceName);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                return StatusCode(500, "Error in handling request");
             }
         }
 
+        //Endpoint that will list user's food preferences
         [HttpGet("ListFoodPreference")]
         [Authorize]
         public async Task<IActionResult> ListFoodPreferenceFromUserAsync()
@@ -56,11 +69,18 @@ namespace MatGPT.Controllers
             }
             try
             {
+                var userExists = await _foodPreferenceRepository.UserExistsAsync(userId);
+
+                if (!userExists)
+                {
+                    return NotFound("User not found");
+                }
+
                 var foodPreferences = await _foodPreferenceRepository.ListFoodPreferenceFromUserAsync(userId);
 
                 if (foodPreferences == null)
                 {
-                    return NotFound("not found");
+                    return NotFound("No food preferences found");
                 }
 
                 return Ok(foodPreferences);
@@ -69,7 +89,7 @@ namespace MatGPT.Controllers
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                return StatusCode(500, "Error in handling request");
             }
         }
     }
