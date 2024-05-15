@@ -14,6 +14,11 @@ namespace MatGPT.Repository
             _context = context;
         }
 
+        public async Task<bool> UserExistsAsync(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            return user != null;
+        }
         public async Task<List<string>> GetIngredientsAsync(int userId)
         {
             try 
@@ -29,30 +34,28 @@ namespace MatGPT.Repository
             }
         }
 
-
         public async Task<List<string>> GetKitchenSuppliesAsync(int userId) // QUYNH TAR ÖVER, RÖR EJ!!!
         {
             try
             {
+
+                var userExists = await UserExistsAsync(userId);
+                if (!userExists)
+                {
+                    throw new Exception("User not found");
+                }
+                
                 var kitchenSupplies = await _context.KitchenSupplies
                     .Where(ks => ks.UserId == userId)
                     .Select(ks => ks.KitchenSupplyName)
                     .ToListAsync();
 
-                if (kitchenSupplies == null || kitchenSupplies.Count == 0)
-                {
-                    throw new Exception("No kitchen supplies found for the specified user.");
-                }
-
+               
                 return kitchenSupplies;
             }
             catch (Exception ex)
             {
-                // Log the error for tracking
-                Console.WriteLine($"An error occurred while fetching kitchen supplies for user {userId}: {ex.Message}");
-
-                // Return a generic error message to the user
-                throw new Exception("An error occurred while fetching kitchen supplies. Please try again later.");
+                throw new Exception("Error when handling request");
             }
         }
 
@@ -68,10 +71,26 @@ namespace MatGPT.Repository
 
         public async Task<List<string>> GetPreferencesAsync(int userId)
         {
-            return await _context.FoodPreferences
-                .Where(fp => fp.UserId == userId)
-                .Select(fp => fp.FoodPreferenceName)
-                .ToListAsync();
+            try
+            {
+                var userExists = await UserExistsAsync(userId);
+                if (!userExists)
+                {
+                    throw new Exception("User not found");
+                }
+
+                var foodPreferences = await _context.FoodPreferences
+                    .Where(fp => fp.UserId == userId)
+                    .Select(fp => fp.FoodPreferenceName)
+                    .ToListAsync();
+
+                return foodPreferences;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error when handling request");
+            }
+
         }
 
         public async Task<Recipe> GetLastRecipeAsync(int userId)
