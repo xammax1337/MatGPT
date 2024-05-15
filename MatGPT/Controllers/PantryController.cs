@@ -27,52 +27,107 @@ namespace MatGPT.Controllers
             _pantryRepository = pantryRepository;
         }
 
-        [HttpPost("AddPantry")]
+        [HttpPost("AddPantry")] //NOAS NYA
         public async Task<IActionResult> AddPantryAsync(PantryDto dto, string pantryName, int userId)
         {
             try
             {
-                var pantries = await _pantryRepository.AddPantryAsync(dto, pantryName, userId);
+                var pantry = await _pantryRepository.AddPantryAsync(dto, pantryName, userId);
 
-                if (pantries == null)
+                if (pantry == null)
                 {
-                    return NotFound("not found");
+                    // Om pantry är null betyder det att något gick fel vid tilläggandet
+                    throw new Exception($"Failed to add pantry '{pantryName}' for user {userId}.");
                 }
 
-                return Ok($"Pantry {pantryName} added successfully.");
-
+                return Ok($"Pantry '{pantryName}' added successfully.");
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                // Logga felmeddelandet för att spåra felet
+                Console.WriteLine($"An error occurred while adding pantry '{pantryName}' for user {userId}: {ex.Message}");
+
+                // Returnera ett specifikt felmeddelande till användaren
+                return StatusCode(500, "An error occurred while processing the request. Please try again later.");
             }
         }
+
+
+        //[HttpPost("AddPantry")]        NOAS UTKOMMENTERADE
+        //public async Task<IActionResult> AddPantryAsync(PantryDto dto, string pantryName, int userId)
+        //{
+        //    try
+        //    {
+        //        var pantries = await _pantryRepository.AddPantryAsync(dto, pantryName, userId);
+
+        //        if (pantries == null)
+        //        {
+        //            return NotFound("not found");
+        //        }
+
+        //        return Ok($"Pantry {pantryName} added successfully.");
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return NotFound(ex.Message);
+        //    }
+        //}
 
 
         //We use GET-endpoint to list pantries, then use this endpoint to delete a pantry (and its pantryingredients)
         //Maybe frontend should show a warning so that user knows that the ingredients connected to the pantry also are deleted
-        [HttpDelete("DeletePantry")]
+
+
+        [HttpDelete("DeletePantry")] //              NOAS NYA
         public async Task<IActionResult> DeletePantryAsync(int userId, string pantryName)
         {
             try
             {
-                var pantries = await _pantryRepository.DeletePantryAsync(userId, pantryName);
+                var pantry = await _pantryRepository.DeletePantryAsync(userId, pantryName);
 
-                if (pantries == null)
+                if (pantry == null)
                 {
-                    return NotFound("not found");
+                    // Om pantry är null betyder det att skafferiet inte kunde hittas för borttagning
+                    throw new Exception($"Pantry '{pantryName}' not found for user {userId}.");
                 }
 
-                return Ok($"{pantryName} deleted");
-
+                return Ok($"Pantry '{pantryName}' deleted successfully.");
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                // Logga felmeddelandet för att spåra felet
+                Console.WriteLine($"An error occurred while deleting pantry '{pantryName}' for user {userId}: {ex.Message}");
+
+                // Returnera ett specifikt felmeddelande till användaren
+                return StatusCode(500, "An error occurred while processing the request. Please try again later.");
             }
         }
 
-        [HttpGet("ListPantry")]
+
+        //[HttpDelete("DeletePantry")]      NOAS UTKOMMENTERADE
+        //public async Task<IActionResult> DeletePantryAsync(int userId, string pantryName)
+        //{
+        //    try
+        //    {
+        //        var pantries = await _pantryRepository.DeletePantryAsync(userId, pantryName);
+
+        //        if (pantries == null)
+        //        {
+        //            return NotFound("not found");
+        //        }
+
+        //        return Ok($"{pantryName} deleted");
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return NotFound(ex.Message);
+        //    }
+        //}
+
+
+        [HttpGet("ListPantry")] // NOAS NYA
         public async Task<IActionResult> ListUsersPantriesAsync(int userId)
         {
             try
@@ -81,18 +136,46 @@ namespace MatGPT.Controllers
 
                 if (pantries == null)
                 {
-                    return NotFound("not found");
+                    // Om skafferierna är null betyder det att inga skafferi kunde hittas för användaren
+                    throw new Exception($"No pantries found for user {userId}.");
                 }
 
                 return Ok(pantries);
-
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
-            }
+                // Logga felmeddelandet för att spåra felet
+                Console.WriteLine($"An error occurred while listing pantries for user {userId}: {ex.Message}");
 
+                // Returnera ett generellt felmeddelande till användaren
+                return StatusCode(500, "An error occurred while processing the request. Please try again later.");
+            }
         }
+
+
+
+
+        //[HttpGet("ListPantry")]    NOAS UTKOMMENTERADE
+        //public async Task<IActionResult> ListUsersPantriesAsync(int userId)
+        //{
+        //    try
+        //    {
+        //        var pantries = await _pantryRepository.ListPantriesFromUserAsync(userId);
+
+        //        if (pantries == null)
+        //        {
+        //            return NotFound("not found");
+        //        }
+
+        //        return Ok(pantries);
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return NotFound(ex.Message);
+        //    }
+
+        //}
 
         [HttpPost("AddIngredientToPantry")]
         public async Task<IActionResult> AddIngredientToPantryAsync(PantryIngredientDto dto, string ingredientName, string pantryName, int userId)

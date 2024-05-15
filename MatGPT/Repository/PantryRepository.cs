@@ -15,60 +15,158 @@ namespace MatGPT.Repository
             _context = context;
         }
 
-        // Add pantry to a user
+
+        // NOAS NYA
         public async Task<Pantry> AddPantryAsync(PantryDto dto, string pantryName, int userId)
         {
-            var pantry = new Pantry
+            try
             {
-                PantryName = pantryName,
-                UserId = userId,
-            };
+                var pantry = new Pantry
+                {
+                    PantryName = pantryName,
+                    UserId = userId,
+                };
 
-            await _context.Pantries.AddAsync(pantry);
-            await _context.SaveChangesAsync();
+                await _context.Pantries.AddAsync(pantry);
+                await _context.SaveChangesAsync();
 
-            return pantry;
+                return pantry;
+            }
+            catch (Exception ex)
+            {
+                // Logga felmeddelandet för att spåra felet
+                Console.WriteLine($"An error occurred while adding pantry {pantryName} for user {userId}: {ex.Message}");
+
+                // Returnera ett generellt felmeddelande till användaren
+                throw new Exception("An error occurred while processing the request. Please try again later.");
+            }
         }
 
-        // Delete a pantry from a users storage
+
+        // Add pantry to a user                             NOAS UTKOMMENTERADE
+        //public async Task<Pantry> AddPantryAsync(PantryDto dto, string pantryName, int userId)
+        //{
+        //    var pantry = new Pantry
+        //    {
+        //        PantryName = pantryName,
+        //        UserId = userId,
+        //    };
+
+        //    await _context.Pantries.AddAsync(pantry);
+        //    await _context.SaveChangesAsync();
+
+        //    return pantry;
+        //}
+
+
+
+
+        //NOAS NYA
         public async Task<Pantry> DeletePantryAsync(int userId, string pantryName)
         {
-            var pantryToDelete = _context.Pantries
-                .Include(p => p.PantryIngredients)
-                .FirstOrDefault(p => p.UserId == userId && p.PantryName.ToLower() == pantryName.ToLower());
-
-            if (pantryToDelete == null)
+            try
             {
-                throw new Exception($"{pantryName} not found");
-            }
+                var pantryToDelete = _context.Pantries
+                    .Include(p => p.PantryIngredients)
+                    .FirstOrDefault(p => p.UserId == userId && p.PantryName.ToLower() == pantryName.ToLower());
 
-            //Deletes pantryingredients first
-            _context.PantryIngredients.RemoveRange(pantryToDelete.PantryIngredients);
-            _context.Pantries.Remove(pantryToDelete);
-            await _context.SaveChangesAsync();
-            return pantryToDelete;
+                if (pantryToDelete == null)
+                {
+                    throw new Exception($"{pantryName} not found");
+                }
+
+                // Ta bort skafferivarorna först
+                _context.PantryIngredients.RemoveRange(pantryToDelete.PantryIngredients);
+                _context.Pantries.Remove(pantryToDelete);
+                await _context.SaveChangesAsync();
+                return pantryToDelete;
+            }
+            catch (Exception ex)
+            {
+                // Logga felmeddelandet för att spåra felet
+                Console.WriteLine($"An error occurred while deleting pantry {pantryName} for user {userId}: {ex.Message}");
+
+                // Returnera ett generellt felmeddelande till användaren
+                throw new Exception("An error occurred while processing the request. Please try again later.");
+            }
         }
 
-        // List pantries from user
+
+        // Delete a pantry from a users storage
+        //                                      NOAS UTKOMMENTERADE
+        //public async Task<Pantry> DeletePantryAsync(int userId, string pantryName)
+        //{
+        //    var pantryToDelete = _context.Pantries
+        //        .Include(p => p.PantryIngredients)
+        //        .FirstOrDefault(p => p.UserId == userId && p.PantryName.ToLower() == pantryName.ToLower());
+
+        //    if (pantryToDelete == null)
+        //    {
+        //        throw new Exception($"{pantryName} not found");
+        //    }
+
+        //    //Deletes pantryingredients first
+        //    _context.PantryIngredients.RemoveRange(pantryToDelete.PantryIngredients);
+        //    _context.Pantries.Remove(pantryToDelete);
+        //    await _context.SaveChangesAsync();
+        //    return pantryToDelete;
+        //}
+
+        // NOAS NYA
         public async Task<IEnumerable<PantryViewModel>> ListPantriesFromUserAsync(int userId)
         {
-            var user = await _context.Users
-                .Include(u => u.Pantries)
-                .FirstOrDefaultAsync(u => u.UserId == userId);
-
-            if (user == null)
+            try
             {
-                throw new Exception("User not found");
-            }
+                var user = await _context.Users
+                    .Include(u => u.Pantries)
+                    .FirstOrDefaultAsync(u => u.UserId == userId);
 
-            var pantryViewModel = user.Pantries
-                .Select(p => new PantryViewModel
+                if (user == null)
                 {
-                    PantryName = p.PantryName
-                });
+                    throw new Exception("User not found");
+                }
 
-            return pantryViewModel;
+                var pantryViewModel = user.Pantries
+                    .Select(p => new PantryViewModel
+                    {
+                        PantryName = p.PantryName
+                    });
+
+                return pantryViewModel;
+            }
+            catch (Exception ex)
+            {
+                // Logga felmeddelandet för att spåra felet
+                Console.WriteLine($"An error occurred while listing pantries for user {userId}: {ex.Message}");
+
+                // Returnera ett generellt felmeddelande till användaren
+                throw new Exception("An error occurred while processing the request. Please try again later.");
+            }
         }
+
+
+
+        // List pantries from user
+        //                       NOAS UTKOMMENTERADE
+        //public async Task<IEnumerable<PantryViewModel>> ListPantriesFromUserAsync(int userId)
+        //{
+        //    var user = await _context.Users
+        //        .Include(u => u.Pantries)
+        //        .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        //    if (user == null)
+        //    {
+        //        throw new Exception("User not found");
+        //    }
+
+        //    var pantryViewModel = user.Pantries
+        //        .Select(p => new PantryViewModel
+        //        {
+        //            PantryName = p.PantryName
+        //        });
+
+        //    return pantryViewModel;
+        //}
 
         // Connect an ingredient to a pantry for a user
         public async Task AddIngredientToPantryAsync(PantryIngredientDto dto, string ingredientName, string pantryName, int userId)
