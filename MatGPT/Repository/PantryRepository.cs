@@ -73,91 +73,128 @@ namespace MatGPT.Repository
         // Connect an ingredient to a pantry for a user
         public async Task AddIngredientToPantryAsync(PantryIngredientDto dto, string ingredientName, string pantryName, int userId)
         {
-            var pantry = await _context.Pantries
-                .Include(p => p.User)
-                .FirstOrDefaultAsync(p => p.PantryName.ToLower() == pantryName.ToLower() && p.UserId == userId);
-
-            if (pantry == null)
+            try
             {
-                // Handle the case where the pantry is not found
-                throw new Exception($"Pantry '{pantryName}' not found for the specified user.");
+                if (userId <= 0)
+                {
+                    throw new Exception($"Invalid userId: {userId}");
+                }
+
+                var pantry = await _context.Pantries
+                   .Include(p => p.User)
+                   .FirstOrDefaultAsync(p => p.PantryName.ToLower() == pantryName.ToLower() && p.UserId == userId);
+
+                if (pantry == null)
+                {
+                    // Handle the case where the pantry is not found
+                    throw new Exception($"Pantry '{pantryName}' not found for the specified user.");
+                }
+
+                var ingredient = await _context.Ingredients
+                    .Include(f => f.User)
+                    .FirstOrDefaultAsync(f => f.IngredientName.ToLower() == ingredientName.ToLower() && f.UserId == userId);
+
+                if (ingredient == null)
+                {
+                    // Handle the case where the ingredient is not found
+                    throw new Exception($"Ingredient '{ingredientName}' not found for the specified user.");
+                }
+
+                await _context.PantryIngredients.AddAsync(new PantryIngredient { PantryId = pantry.PantryId, IngredientId = ingredient.IngredientId });
+
+                await _context.SaveChangesAsync();
+
+                //return;
             }
-
-            var ingredient = await _context.Ingredients
-                .Include(f => f.User)
-                .FirstOrDefaultAsync(f => f.IngredientName.ToLower() == ingredientName.ToLower() && f.UserId == userId);
-
-            if (ingredient == null)
+            catch (Exception ex)
             {
-                // Handle the case where the ingredient is not found
-                throw new Exception($"Ingredient '{ingredientName}' not found for the specified user.");
+                
+                throw new Exception("Failed to add ingredient to pantry.", ex);
             }
-
-            await _context.PantryIngredients.AddAsync(new PantryIngredient { PantryId = pantry.PantryId, IngredientId = ingredient.IngredientId });
-
-            await _context.SaveChangesAsync();
-
-            return;
         }
 
         public async Task DeleteIngredientFromPantryAsync(int userId, string ingredientName, string pantryName)
         {
-            var pantry = await _context.Pantries
+            try
+            {
+                if (userId <= 0)
+                {
+                    throw new ArgumentException("Invalid userId.");
+                }
+                var pantry = await _context.Pantries
                 .Include(p => p.User)
                 .FirstOrDefaultAsync(p => p.PantryName.ToLower() == pantryName.ToLower() && p.UserId == userId);
 
-            if (pantry == null)
-            {
-                // Handle the case where the pantry is not found
-                throw new Exception($"Pantry '{pantryName}' not found for the specified user.");
+                if (pantry == null)
+                {
+                    // Handle the case where the pantry is not found
+                    throw new Exception($"Pantry '{pantryName}' not found for the specified user.");
+                }
+
+                var ingredient = await _context.Ingredients
+                    .Include(f => f.User)
+                    .FirstOrDefaultAsync(f => f.IngredientName.ToLower() == ingredientName.ToLower() && f.UserId == userId);
+
+                if (ingredient == null)
+                {
+                    // Handle the case where the ingredient is not found
+                    throw new Exception($"Ingredient '{ingredientName}' not found for the specified user.");
+                }
+
+                var pantryIngredient = await _context.PantryIngredients.FirstOrDefaultAsync(pi => pi.PantryId == pantry.PantryId && pi.IngredientId == ingredient.IngredientId);
+
+                _context.PantryIngredients.Remove(pantryIngredient);
+                await _context.SaveChangesAsync();
             }
-
-            var ingredient = await _context.Ingredients
-                .Include(f => f.User)
-                .FirstOrDefaultAsync(f => f.IngredientName.ToLower() == ingredientName.ToLower() && f.UserId == userId);
-
-            if (ingredient == null)
+            catch (Exception ex)
             {
-                // Handle the case where the ingredient is not found
-                throw new Exception($"Ingredient '{ingredientName}' not found for the specified user.");
+                // Log the exception or perform other error handling actions
+                throw new Exception("Failed to delete ingredient from pantry.", ex);
             }
-
-            var pantryIngredient = await _context.PantryIngredients.FirstOrDefaultAsync(pi => pi.PantryId == pantry.PantryId && pi.IngredientId == ingredient.IngredientId);
-
-            _context.PantryIngredients.Remove(pantryIngredient);
-            await _context.SaveChangesAsync();
-
         }
 
         // List ingredients from a users pantry
         public async Task<IEnumerable<PantryIngredientDto>> ListPantryIngredientsAsync(int userId, string pantryName)
         {
-            var pantry = await _context.Pantries
-                .Include(p => p.User)
-                .FirstOrDefaultAsync(p => p.PantryName == pantryName && p.UserId == userId);
-
-            if (pantry == null)
+            try
             {
-                throw new Exception($"Pantry '{pantryName}' not found for the specified user.");
+
+                if (userId <= 0)
+                {
+                    throw new ArgumentException("Invalid userId.");
+                }
+                var pantry = await _context.Pantries
+                    .Include(p => p.User)
+                    .FirstOrDefaultAsync(p => p.PantryName == pantryName && p.UserId == userId);
+
+                if (pantry == null)
+                {
+                    throw new Exception($"Pantry '{pantryName}' not found for the specified user.");
+                }
+
+                var pantryIngredients = await _context.PantryIngredients
+                    .Include(pi => pi.Ingredient)
+                    .Where(pi => pi.PantryId == pantry.PantryId)
+                    .ToListAsync();
+
+                if (pantryIngredients == null)
+                {
+                    throw new Exception($"No Ingredients found connected to '{pantryName}' for the specified user.");
+                }
+
+                // Map the pantry ingredients to DTOs
+                var pantryIngredientDtos = pantryIngredients.Select(pi => new PantryIngredientDto
+                {
+                    IngredientName = pi.Ingredient.IngredientName,
+                });
+
+                return pantryIngredientDtos;
             }
-
-            var pantryIngredients = await _context.PantryIngredients
-                .Include(pi => pi.Ingredient)
-                .Where(pi => pi.PantryId == pantry.PantryId)
-                .ToListAsync();
-
-            if (pantryIngredients == null)
+            catch (Exception ex)
             {
-                throw new Exception($"No Ingredients found connected to '{pantryName}' for the specified user.");
+                // Log the exception or perform other error handling actions
+                throw new Exception("Failed to list pantry ingredients.", ex);
             }
-
-            // Map the pantry ingredients to DTOs
-            var pantryIngredientDtos = pantryIngredients.Select(pi => new PantryIngredientDto
-            {
-                IngredientName = pi.Ingredient.IngredientName,
-            });
-
-            return pantryIngredientDtos;
         }
     }
 }

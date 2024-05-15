@@ -99,6 +99,21 @@ namespace MatGPT.Controllers
         {
             try
             {
+                if (string.IsNullOrEmpty(ingredientName))
+                {
+                    return BadRequest("Ingredient name cannot be empty");
+                }
+
+                if (string.IsNullOrEmpty(pantryName))
+                {
+                    return BadRequest("Pantry name cannot be empty");
+                }
+
+                if (userId <= 0)
+                {
+                    return BadRequest("Invalid user ID");
+                }
+
                 await _pantryRepository.AddIngredientToPantryAsync(dto, ingredientName, pantryName, userId);
 
                 return Ok($"{ingredientName} added to {pantryName} successfully.");
@@ -106,7 +121,7 @@ namespace MatGPT.Controllers
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
 
@@ -118,6 +133,20 @@ namespace MatGPT.Controllers
         {
             try
             {
+                if (string.IsNullOrEmpty(ingredientName))
+                {
+                    return BadRequest("Ingredient name cannot be empty");
+                }
+
+                if (string.IsNullOrEmpty(pantryName))
+                {
+                    return BadRequest("Pantry name cannot be empty");
+                }
+
+                if (userId <= 0)
+                {
+                    return BadRequest("Invalid user ID");
+                }
                 await _pantryRepository.DeleteIngredientFromPantryAsync(userId, ingredientName, pantryName);
 
                 return Ok($"{ingredientName} deleted from {pantryName}");
@@ -130,19 +159,29 @@ namespace MatGPT.Controllers
 
         // Change and fix the error handling!!!!!!!
         [HttpGet("ListPantryIngredientsAsync")]
-        public async Task<IEnumerable<PantryIngredientDto>> ListPantryIngredientsAsync(int userId, string pantryName)
+        public async Task<IActionResult> ListPantryIngredientsAsync(int userId, string pantryName)
         {
             try
             {
+                if (string.IsNullOrEmpty(pantryName))
+                {
+                    return BadRequest("Pantry name cannot be empty");
+                }
+
+                if (userId <= 0)
+                {
+                    return BadRequest("Invalid user ID");
+                }
+
                 var listofPantryIngredients = await _pantryRepository.ListPantryIngredientsAsync(userId, pantryName);
 
-                return listofPantryIngredients;
+                return Ok(listofPantryIngredients);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
             }
             
-            catch(Exception ex)
-            {
-                throw;
-            }
         }
     }
 }
