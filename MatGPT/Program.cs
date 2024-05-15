@@ -4,9 +4,11 @@ using MatGPT.Models;
 using MatGPT.Models.ViewModels;
 using MatGPT.Repository;
 using MatGPT.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using OpenAI_API;
 using OpenAI_API.Chat;
@@ -14,6 +16,7 @@ using OpenAI_API.Images;
 using OpenAI_API.Models;
 using Sprache;
 using System.Formats.Asn1;
+using System.Text;
 using static System.Net.WebRequestMethods;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +29,22 @@ builder.Services.AddScoped<IKitchenSupplyRepository, KitchenSupplyRepository>();
 builder.Services.AddScoped<IFoodPreferenceRepository, FoodPreferenceRepository>();
 builder.Services.AddScoped<IPantryRepository, PantryRepository>();
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
+builder.Services.AddScoped<UserService>();
+
+// Adding JWT Bearer and authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+       .AddJwtBearer(options => {
+           options.TokenValidationParameters = new TokenValidationParameters
+           {
+               ValidateIssuer = true,
+               ValidateAudience = true,
+               ValidateLifetime = true,
+               ValidateIssuerSigningKey = true,
+               ValidIssuer = builder.Configuration["Jwt:Issuer"],
+               ValidAudience = builder.Configuration["Jwt:Audience"],
+               IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+           };
+       });
 
 DotNetEnv.Env.Load();
 
@@ -60,6 +79,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseSession();
+
+app.UseAuthentication(); // Adding authentication
 
 app.UseAuthorization();
 

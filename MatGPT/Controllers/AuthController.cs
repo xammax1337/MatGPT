@@ -3,9 +3,14 @@ using MatGPT.Models;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Runtime.CompilerServices;
+using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace MatGPT.Controllers
 {
@@ -14,14 +19,16 @@ namespace MatGPT.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ApplicationContext _context;
+        private IConfiguration _config;
         
-        public AuthController(ApplicationContext context)
+        public AuthController(ApplicationContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> RegisterAsync(RegisterRequest registerReq)
+        public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest registerReq)
         {
             if (_context.Credentials.Any(u => u.Email == registerReq.Email))
             {
@@ -63,7 +70,7 @@ namespace MatGPT.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> LoginAsync(LoginRequest loginReq)
+        public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginReq)
         {
             
             // Finds the user trying to login using Email as username
@@ -74,7 +81,9 @@ namespace MatGPT.Controllers
 
             // Checks if the user exists
             if (user == null)
-                return BadRequest("User not found"); 
+            {
+                return BadRequest("User not found");
+            }
 
             // Compute hash of the provided password using the retrieved salt
             byte[] salt = Convert.FromBase64String(user.Credential.Salt);
@@ -84,10 +93,10 @@ namespace MatGPT.Controllers
             if (!Convert.ToBase64String(hash).Equals(user.Credential.PasswordHash))
                 return Unauthorized("Wrong password!");
 
-            // When logged in saves UserId in session so it can be used in other endpoints
-            HttpContext.Session.SetString("UserId", user.UserId.ToString());
+            // Generate JWT token
+            var token = GenerateJwt(user);
 
-            return Ok(new { message = $"Login successful! Welcome back {user.FirstName}, userId: {user.UserId}!" });
+            return Ok(new { message = $"Login successful! Welcome back {user.FirstName} {user.LastName}!", token });
         }
 
         // Generate the salt for password
@@ -119,37 +128,32 @@ namespace MatGPT.Controllers
         public async Task<IActionResult> LogoutAsync()
         {
             // Clear user's session
-            HttpContext.Session.Clear();
+            //HttpContext.Session.Clear();
 
+            // Front end needs to add a "localStorage.removeItem('jwtToken') or sessionStorage.removeItem('jwtToken').
+            // Since the JWT is stored there, so backend doesnt need to clean it, we just send a confirmation when user presses button.
             return Ok("Logout successful");
         }
-    }
 
-    // Models for login and register, move into model folder maybe
-    public class RegisterRequest
-    {
-        [Required]
-        public string FirstName { get; set; }
+        private string GenerateJwt(User user)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-        [Required]
-        public string LastName { get; set; }
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.GivenName, user.FirstName),
+                new Claim(ClaimTypes.Surname, user.LastName)
+            };
 
-        [Required, EmailAddress]
-        public string Email { get; set; }
+            var token = new JwtSecurityToken(_config["Jwt:Issuer"],
+                _config["Jwt:Audience"],
+                claims,
+                expires: DateTime.Now.AddMinutes(15),
+                signingCredentials: credentials);
 
-        [Required, MinLength(6)]
-        public string Password { get; set; }
-
-        [Required, Compare("Password")]
-        public string ConfirmPassword { get; set; }
-    }
-
-    public class LoginRequest
-    {
-        [Required, EmailAddress]
-        public string Email { get; set; }
-
-        [Required, MinLength(6)]
-        public string Password { get; set; }
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
     }
 }
