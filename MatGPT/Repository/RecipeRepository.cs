@@ -22,13 +22,42 @@ namespace MatGPT.Repository
                 .ToListAsync();
         }
 
-        public async Task<List<string>> GetKitchenSuppliesAsync(int userId)
+
+        public async Task<List<string>> GetKitchenSuppliesAsync(int userId) // QUYNH TAR ÖVER, RÖR EJ!!!
         {
-            return await _context.KitchenSupplies
-                .Where(ks => ks.UserId == userId)
-                .Select(ks => ks.KitchenSupplyName)
-                .ToListAsync();
+            try
+            {
+                var kitchenSupplies = await _context.KitchenSupplies
+                    .Where(ks => ks.UserId == userId)
+                    .Select(ks => ks.KitchenSupplyName)
+                    .ToListAsync();
+
+                if (kitchenSupplies == null || kitchenSupplies.Count == 0)
+                {
+                    throw new Exception("No kitchen supplies found for the specified user.");
+                }
+
+                return kitchenSupplies;
+            }
+            catch (Exception ex)
+            {
+                // Log the error for tracking
+                Console.WriteLine($"An error occurred while fetching kitchen supplies for user {userId}: {ex.Message}");
+
+                // Return a generic error message to the user
+                throw new Exception("An error occurred while fetching kitchen supplies. Please try again later.");
+            }
         }
+
+
+        // NOAS UTKOMMENTERADE
+        //public async Task<List<string>> GetKitchenSuppliesAsync(int userId)
+        //{
+        //    return await _context.KitchenSupplies
+        //        .Where(ks => ks.UserId == userId)
+        //        .Select(ks => ks.KitchenSupplyName)
+        //        .ToListAsync();
+        //}
 
         public async Task<List<string>> GetPreferencesAsync(int userId)
         {
