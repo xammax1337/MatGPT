@@ -10,6 +10,8 @@ namespace MatGPT.Interfaces
         Task<List<string>> GetIngredientsAsync(int userId);
         Task<List<string>> GetPreferencesAsync(int userId);
 
+        Task<bool> UserExistsAsync(int userId);
+
         //For saving recipe
         Task<Recipe> GetLastRecipeAsync(int userId);
         Task<Recipe> RemoveLastRecipeAsync(int userId);
