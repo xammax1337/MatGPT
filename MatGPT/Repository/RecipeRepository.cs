@@ -16,10 +16,17 @@ namespace MatGPT.Repository
 
         public async Task<List<string>> GetIngredientsAsync(int userId)
         {
-            return await _context.Ingredients
-                .Where(i => i.UserId == userId)
-                .Select(i => i.IngredientName)
-                .ToListAsync();
+            try 
+            {
+                return await _context.Ingredients
+               .Where(i => i.UserId == userId)
+               .Select(i => i.IngredientName)
+               .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error fetching ingredients", ex);
+            }
         }
 
 
@@ -112,6 +119,7 @@ namespace MatGPT.Repository
 
         public async Task<IEnumerable<RecipeViewModel>> ListUsersRecipe(int userId)
         {
+
             var user = await _context.Users
                 .Include(u => u.Recipes)
                 .FirstOrDefaultAsync(u => u.UserId == userId);
