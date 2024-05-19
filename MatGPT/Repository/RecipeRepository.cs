@@ -95,23 +95,62 @@ namespace MatGPT.Repository
 
         public async Task<Recipe> GetLastRecipeAsync(int userId)
         {
-            return await _context.Recipes
-                .Where(r => r.UserId == userId)
-                .OrderByDescending(r => r.RecipeId)
-                .FirstOrDefaultAsync();
+            try
+            {
+                var userExists = await UserExistsAsync(userId);
+                if (!userExists)
+                {
+                    throw new Exception("User not found");
+                }
+
+                var lastRecipe = await _context.Recipes
+                    .Where(r => r.UserId == userId)
+                    .OrderByDescending(r => r.RecipeId)
+                    .FirstOrDefaultAsync();
+
+                if (lastRecipe == null)
+                {
+                    throw new Exception("No recipe found");
+                }
+                else
+                {
+                    return lastRecipe;
+                }
+
+            }
+            catch (Exception)
+            {
+                throw new Exception("Error when handling request");
+            }
         }
 
         public async Task<Recipe> RemoveLastRecipeAsync(int userId)
         {
-            var lastRecipe = await GetLastRecipeAsync(userId);
-
-            if (lastRecipe != null)
+            try
             {
-                _context.Recipes.Remove(lastRecipe);
-                await _context.SaveChangesAsync();
-            }
+                var userExists = await UserExistsAsync(userId);
+                if (!userExists)
+                {
+                    throw new Exception("User not found");
+                }
 
-            return lastRecipe;
+                var lastRecipe = await GetLastRecipeAsync(userId);
+
+                if (lastRecipe != null)
+                {
+                    _context.Recipes.Remove(lastRecipe);
+                    await _context.SaveChangesAsync();
+                    return lastRecipe;
+                }
+                else
+                {
+                    throw new Exception("No recipe found");
+                }
+            }
+            catch (Exception)
+            {
+                throw new Exception("Error when handling request");
+            }
         }
 
         public async Task<Recipe> SaveRecipeAsync(Recipe recipe)
@@ -125,10 +164,17 @@ namespace MatGPT.Repository
                 UserId = recipe.UserId
             };
 
-            await _context.Recipes.AddAsync(newRecipe);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.Recipes.AddAsync(newRecipe);
+                await _context.SaveChangesAsync();
 
-            return newRecipe;
+                return newRecipe;
+            }
+            catch (Exception)
+            {
+                throw new Exception("Error when handling request");
+            }
         }
 
         public async Task SaveChangesAsync()
