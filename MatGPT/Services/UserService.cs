@@ -15,5 +15,17 @@ namespace MatGPT.Services
             }
             return -1; // Send the -1 if no user is found.
         }
+
+        // New method that can be used for all endpoints to get UserId when needed.
+        public int ValidateUserId(ClaimsPrincipal user)
+        {
+            // Gets the userId from the JWTtoken and checks if hte userId is not -1
+            int userId = GetUserIdFromToken(user);
+            if (userId == -1)
+            {
+                throw new UnauthorizedAccessException("User ID not found in token.");
+            }
+            return userId;
+        }
     }
 }

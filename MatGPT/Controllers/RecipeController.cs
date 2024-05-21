@@ -10,6 +10,8 @@ using OpenAI_API;
 using OpenAI_API.Images;
 using MatGPT.Repository;
 using MatGPT.Interfaces;
+using MatGPT.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MatGPT.Controllers
 {
@@ -21,12 +23,14 @@ namespace MatGPT.Controllers
         private readonly OpenAIAPI _api;
 
         private readonly IRecipeRepository _recipeRepository;
+        private readonly UserService _userService;
 
-        public RecipeController(ApplicationContext dbContext, OpenAIAPI api, IRecipeRepository recipeRepository)
+        public RecipeController(ApplicationContext dbContext, OpenAIAPI api, IRecipeRepository recipeRepository, UserService userService)
         {
             _recipeRepository = recipeRepository;
             _context = dbContext;
             _api = api;
+            _userService = userService;
         }
 
         //This endpoint generates a recipe. We input ingredients, tools, food preferences etc
@@ -106,7 +110,17 @@ namespace MatGPT.Controllers
                 //string imageUrl = await GenerateImageByRecipeTitle(recipe.Title, _api);
 
                 //Automatically save the recipe to database Temporarily (Later call the SaveRecipe Endpoint to delete or save permanently
-                //await _recipeRepository.SaveRecipeAsync(recipe);
+                //Bugged so didnt automatically save before, had to move this back here instead of having it on repository class.
+                await _context.Recipes.AddAsync(new Recipe
+                {
+                    Title = recipe.Title,
+                    Instructions = recipe.Instructions,
+                    Ingredients = recipe.Ingredients,
+                    CookingTime = recipe.CookingTime,
+                    UserId = userId
+                });
+
+                await _context.SaveChangesAsync();
 
                 // Combine the recipe and image URL into a single object
                 var result = new { Recipe = recipe/*, ImageUrl = imageUrl */};
@@ -142,15 +156,11 @@ namespace MatGPT.Controllers
         // The other endpoints will auto save recipes in "temporary storage" and then this decides if the recipe should be deleted
         // or permanently saved to a user.
         [HttpPost("SaveRecipe")]
+        [Authorize]
         public async Task<IActionResult> SaveOrRemoveRecipeAsync(string recipeName, bool saveRecipe)
         {
-            // Retrieve user's ID from session
-            string userId = HttpContext.Session.GetString("UserId");
-
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized("User not authenticated");
-            }
+            // Get userId from token using method inside UserServices
+            int userId = _userService.ValidateUserId(User);
 
             if (saveRecipe)
             {
@@ -160,7 +170,7 @@ namespace MatGPT.Controllers
                 }
 
                 // Find the last saved recipe by sorting by userid and latest recipe
-                var lastRecipe = await _recipeRepository.GetLastRecipeAsync(int.Parse(userId));
+                var lastRecipe = await _recipeRepository.GetLastRecipeAsync(userId);
 
                 if (lastRecipe == null)
                 {
@@ -181,7 +191,7 @@ namespace MatGPT.Controllers
             }
             else
             {
-                var lastRecipe = await _recipeRepository.RemoveLastRecipeAsync(int.Parse(userId));
+                var lastRecipe = await _recipeRepository.RemoveLastRecipeAsync(userId);
 
                 if (lastRecipe == null)
                 {
