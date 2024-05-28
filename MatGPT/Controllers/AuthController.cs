@@ -137,8 +137,15 @@ namespace MatGPT.Controllers
 
         private string GenerateJwt(User user)
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                throw new InvalidOperationException("JWT_KEY not found in environment variables.");
+            }
+
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
 
             var claims = new List<Claim>
             {
