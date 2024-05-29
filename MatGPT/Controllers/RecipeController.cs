@@ -138,66 +138,89 @@ namespace MatGPT.Controllers
         //}
 
 
+
         // This endpoint NEEDS to be called after the other ones.
         // The other endpoints will auto save recipes in "temporary storage" and then this decides if the recipe should be deleted
         // or permanently saved to a user.
         [HttpPost("SaveRecipe")]
         public async Task<IActionResult> SaveOrRemoveRecipeAsync(string recipeName, bool saveRecipe)
         {
-            // Retrieve user's ID from session
-            string userId = HttpContext.Session.GetString("UserId");
-
-            if (string.IsNullOrEmpty(userId))
+            try
             {
-                return Unauthorized("User not authenticated");
-            }
+                // Retrieve user's ID from session
+                string userId = HttpContext.Session.GetString("UserId");
 
-            if (saveRecipe)
-            {
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User not authenticated");
+                }
+
                 if (string.IsNullOrEmpty(recipeName))
                 {
                     return BadRequest("Recipe name cannot be empty.");
                 }
 
-                // Find the last saved recipe by sorting by userid and latest recipe
-                var lastRecipe = await _recipeRepository.GetLastRecipeAsync(int.Parse(userId));
-
-                if (lastRecipe == null)
+                if (saveRecipe)
                 {
-                    return NotFound("No recipe to save.");
-                }
+                    // Find the last saved recipe by sorting by userid and latest recipe
+                    var lastRecipe = await _recipeRepository.GetLastRecipeAsync(int.Parse(userId));
 
-                lastRecipe.Title = recipeName;
+                    if (lastRecipe == null)
+                    {
+                        return NotFound("No recipe to save.");
+                    }
 
-                try
-                {
+                    lastRecipe.Title = recipeName;
+
                     await _recipeRepository.SaveChangesAsync();
+                    
                     return Ok($"Saved the recipe as {recipeName}");
                 }
-                catch (DbUpdateException ex)
+                else
                 {
-                    return StatusCode(500, "An error occurred while updating the recipe. Please try again later.");
+
+                    var lastRecipe = await _recipeRepository.RemoveLastRecipeAsync(int.Parse(userId));
+
+                    if (lastRecipe == null)
+                    {
+                        return NotFound("No recipe to delete.");
+                    }
+
+                    return Ok("Recipe not saved, deleted from database.");
                 }
             }
-            else
+            catch (DbUpdateException)
             {
-                var lastRecipe = await _recipeRepository.RemoveLastRecipeAsync(int.Parse(userId));
-
-                if (lastRecipe == null)
-                {
-                    return NotFound("No recipe to delete");
-                }
-
-                return Ok("Recipe not saved, deleted from database.");
+                return StatusCode(500, "An error occurred while updating the recipe. Please try again later.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "An unexpected error occurred.");
             }
         }
 
         [HttpGet("ListRecipe")]
-        public async Task<IEnumerable<RecipeViewModel>> ListUsersRecipe(int userId)
+        public async Task<ActionResult<IEnumerable<RecipeViewModel>>> ListUsersRecipe(int userId)
         {
-            var recipes = await _recipeRepository.ListUsersRecipe(userId);
-            return (recipes);
+            try
+            {
+                var recipes = await _recipeRepository.ListUsersRecipe(userId);
+                if (recipes == null)
+                {
+                    return NotFound();
+                }
+                return Ok(recipes);
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "An error occurred while fetching recipes. Please try again later.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "An unexpected error occurred.");
+            }
         }
+
 
         [HttpPost("TestGenerateRecipe")]
         public async Task<IActionResult> TestGenerateRecipeAsync(string query, int userId, int minTime, int maxTime, bool chooseTimer, int servings, bool choosePreferences)
