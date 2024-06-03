@@ -96,7 +96,7 @@ namespace MatGPT.Controllers
             // Generate JWT token
             var token = GenerateJwt(user);
 
-            return Ok(new { message = $"Login successful! Welcome back {user.FirstName} {user.LastName}!", token });
+            return Ok(new { message = $"Login successful! Welcome back {user.FirstName} {user.LastName}! userId: {user.UserId}", token });
         }
 
         // Generate the salt for password
