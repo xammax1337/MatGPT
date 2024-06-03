@@ -54,6 +54,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // Add services to the container.
 
+builder.Services.AddControllers();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin",
@@ -61,11 +63,11 @@ builder.Services.AddCors(options =>
         {
             builder.WithOrigins("http://localhost:3000/", "http://localhost:5173/", "http://127.0.0.1:5500") // Specify the origin of your frontend app
                    .AllowAnyHeader()
-                   .AllowAnyMethod();
+                   .AllowAnyMethod()
+                   .AllowCredentials();
+                   
         });
 });
-
-builder.Services.AddControllers();
 
 // Added session service so we can use Session to check user authorization
 builder.Services.AddSession(options =>
@@ -92,6 +94,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowSpecificOrigin");
 
 app.UseSession();
 

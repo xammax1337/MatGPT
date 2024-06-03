@@ -166,7 +166,7 @@ namespace MatGPT.Controllers
             // Retrieve user's ID from session
                 int userId = _userService.ValidateUserId(User);
 
-                if (string.IsNullOrEmpty(userId))
+                if ((userId) < 1)
                 {
                     return Unauthorized("User not authenticated");
                 }
