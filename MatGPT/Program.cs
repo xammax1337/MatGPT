@@ -22,6 +22,7 @@ using static System.Net.WebRequestMethods;
 var builder = WebApplication.CreateBuilder(args);
 
 string connectionString = builder.Configuration.GetConnectionString("ApplicationContext");
+
 builder.Services.AddDbContext<ApplicationContext>(opt => opt.UseSqlServer(connectionString));
 //Repositories
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
@@ -30,6 +31,10 @@ builder.Services.AddScoped<IFoodPreferenceRepository, FoodPreferenceRepository>(
 builder.Services.AddScoped<IPantryRepository, PantryRepository>();
 builder.Services.AddScoped<IIngredientRepository, IngredientRepository>();
 builder.Services.AddScoped<UserService>();
+
+DotNetEnv.Env.Load();
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
+var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 // Adding JWT Bearer and authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -42,13 +47,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                ValidateIssuerSigningKey = true,
                ValidIssuer = builder.Configuration["Jwt:Issuer"],
                ValidAudience = builder.Configuration["Jwt:Audience"],
-               IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+               IssuerSigningKey = key
            };
        });
 
-DotNetEnv.Env.Load();
 
 // Add services to the container.
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigin",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:3000/", "http://localhost:5173/", "http://127.0.0.1:5500") // Specify the origin of your frontend app
+                   .AllowAnyHeader()
+                   .AllowAnyMethod();
+        });
+});
 
 builder.Services.AddControllers();
 
